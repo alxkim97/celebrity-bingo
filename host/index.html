@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Celebrity Bingo — Host</title>
+<style>
+:root{--bg:#0f0e17;--surface:#1a1a2e;--surface2:#1e1b4b;--border:#2a2a4e;
+  --accent:#a786df;--accent2:#7c53c3;--gold:#ffd700;--red:#e63946;
+  --green:#2d6a4f;--text:#fffffe;--muted:#888;--dim:#444;--card:#12111e;
+  --font:'Segoe UI',Tahoma,Geneva,sans-serif;--fs:14px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);font-size:var(--fs);background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;align-items:center;min-height:100vh;overflow-y:auto}
+.hidden{display:none!important}
+button{cursor:pointer;border:none;border-radius:8px;font-family:var(--font);font-weight:600;
+  transition:filter .15s,transform .1s}
+button:hover:not(:disabled){filter:brightness(1.18)}
+button:active:not(:disabled){transform:scale(.97)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input,textarea,select{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:var(--font);font-size:calc(var(--fs) - 1px);
+  padding:7px 11px;outline:none;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+select option{background:var(--surface)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+a{color:var(--accent)}
+
+/* buttons */
+.btn-p{background:var(--accent);color:var(--bg);padding:11px 28px;font-size:.95rem}
+.btn-s{background:var(--surface);color:var(--text);padding:9px 18px;font-size:.85rem;border:1px solid var(--border)}
+.btn-d{background:#6b2737;color:#fff;padding:9px 18px;font-size:.85rem}
+.btn-add{background:var(--accent);color:var(--bg);padding:7px 16px;white-space:nowrap;flex-shrink:0;font-size:.85rem}
+.err{color:var(--red);font-size:12px}
+
+/* settings FAB */
+.fab{position:fixed;bottom:22px;right:22px;width:46px;height:46px;border-radius:50%;
+  background:var(--accent);color:var(--bg);font-size:20px;display:flex;align-items:center;
+  justify-content:center;z-index:300;box-shadow:0 4px 14px #0006;cursor:pointer}
+#settings-drawer{position:fixed;top:0;right:0;width:290px;height:100vh;background:var(--surface);
+  border-left:1px solid var(--border);z-index:400;transform:translateX(100%);
+  transition:transform .25s;overflow-y:auto;padding:20px}
+#settings-drawer.open{transform:translateX(0)}
+.drawer-overlay{position:fixed;inset:0;background:#0008;z-index:390;display:none}
+.drawer-overlay.show{display:block}
+.drawer-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.drawer-hdr h3{font-size:1rem;color:var(--accent)}
+.drawer-close{background:none;color:var(--muted);font-size:20px;padding:0}
+.drawer-section{margin-bottom:18px}
+.drawer-section label{display:block;font-size:11px;color:var(--muted);font-weight:700;
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.tswatch{width:100%;aspect-ratio:1;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:border-color .15s}
+.tswatch.active{border-color:var(--text)!important}
+.font-row{display:flex;gap:6px;align-items:center}
+.font-row input[type=range]{flex:1;accent-color:var(--accent)}
+.lang-btn{background:var(--surface2);color:var(--text);padding:8px 14px;font-size:13px;
+  border:1px solid var(--border);width:100%;text-align:center;border-radius:8px}
+.photos-row{display:flex;align-items:center;gap:8px}
+.photos-row input{width:auto}
+.reset-btn{background:var(--surface2);color:var(--muted);padding:9px;font-size:12px;
+  border:1px solid var(--border);width:100%;border-radius:8px}
+.reset-btn:hover{color:var(--red)!important;border-color:var(--red)!important}
+
+/* welcome */
+#ph-welcome{width:100%;max-width:620px;margin:auto;padding:40px 20px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:20px}
+#ph-welcome h1{font-size:3rem;color:var(--accent);letter-spacing:-1px}
+.sub{color:var(--dim);font-size:1rem}
+.rules-card{background:var(--surface);border-radius:16px;padding:24px;text-align:left;width:100%;max-width:460px}
+.rules-card p{color:var(--muted);font-size:calc(var(--fs) - 1px);line-height:2.1}
+.rules-card b{color:var(--text)}
+
+/* setup */
+#ph-setup{width:100%;max-width:940px;padding:28px 20px;display:flex;flex-direction:column;gap:0}
+#ph-setup h2{font-size:1.7rem;margin-bottom:18px}
+.tabs{display:flex;gap:3px}
+.tab-btn{background:var(--surface);color:var(--muted);padding:9px 20px;border-radius:8px 8px 0 0;font-size:calc(var(--fs) - 1px)}
+.tab-btn.active{background:var(--surface2);color:var(--accent);border-bottom:2px solid var(--accent)}
+.panel{display:none;background:var(--surface2);border-radius:0 8px 8px 8px;padding:22px}
+.panel.active{display:block}
+.hint{font-size:11px;color:var(--dim);margin-bottom:10px}
+.input-row{display:flex;gap:7px;margin-bottom:12px}
+.input-row input{flex:1}
+.pool-actions{display:flex;gap:6px;margin-bottom:10px}
+.pool-actions .btn-s{padding:5px 12px;font-size:11px}
+.pool-wrap{border:1px solid var(--border);border-radius:8px;padding:10px;max-height:220px;overflow-y:auto;background:var(--card)}
+.pool-grid{display:flex;flex-wrap:wrap;gap:5px}
+.pc{padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);transition:all .15s;display:inline-flex;align-items:center;gap:5px;user-select:none}
+.pc:hover{border-color:var(--accent);color:var(--text)}
+.pc.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.pc .pcrm,.pc .pcwiki{background:none;color:inherit;font-size:12px;padding:0;opacity:.7;line-height:1}
+.pc .pcrm:hover{opacity:1;color:var(--red)!important}
+.pc .pcwiki:hover{opacity:1}
+.pool-count{font-size:11px;color:var(--dim);margin-top:8px}
+.bulk-ta{height:65px;resize:vertical;font-size:12px;margin-bottom:6px}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.sg{display:flex;flex-direction:column;gap:7px}
+.sg label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px}
+.size-row{display:flex;gap:5px}
+.sz{background:var(--card);color:var(--muted);padding:7px 0;flex:1;border:1px solid var(--border);font-size:13px}
+.sz.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.prow{display:flex;align-items:center;gap:8px}
+.prow input{width:55px;flex:none;text-align:center}
+.adj{background:var(--card);color:var(--text);padding:5px 12px;border:1px solid var(--border);font-size:15px}
+#pnames-list{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.toggle-row{display:flex;align-items:center;gap:10px;margin-top:6px}
+.toggle-row label{font-size:calc(var(--fs) - 1px);color:var(--muted)}
+input[type=checkbox]{width:auto;accent-color:var(--accent)}
+.bottom-bar{display:flex;justify-content:space-between;align-items:center;
+  margin-top:20px;padding:0 0 4px;width:100%;max-width:940px}
+
+/* cards phase */
+#ph-cards{width:100%;max-width:720px;padding:32px 20px;display:flex;flex-direction:column;align-items:center;gap:18px}
+#ph-cards h2{font-size:1.6rem}
+.cards-top{display:grid;grid-template-columns:1fr auto;gap:20px;width:100%;align-items:start}
+.setup-status{display:flex;flex-direction:column;gap:7px;flex:1}
+.p-status{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:11px 16px;display:flex;align-items:center;justify-content:space-between;font-size:var(--fs)}
+.p-status .pname{font-weight:700}
+.psbadge{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.psbadge.pending{background:var(--border);color:var(--muted)}
+.psbadge.joined{background:#1e3a5c;color:#4cc9f0}
+.psbadge.done{background:var(--green);color:#fff}
+.psbadge.closed{background:#6b2737;color:#fff}
+
+/* QR / join panel */
+.join-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:18px;text-align:center;min-width:200px}
+.join-panel h3{font-size:13px;color:var(--muted);font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;margin-bottom:12px}
+#qr-img{border-radius:8px;display:block;margin:0 auto 10px}
+#join-url{font-size:12px;color:var(--accent);word-break:break-all;margin-bottom:6px}
+.join-hint{font-size:11px;color:var(--dim)}
+.cards-actions{display:flex;gap:10px;margin-top:4px}
+
+/* game phase */
+#ph-game{width:100%;max-width:1060px;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.game-header{display:flex;align-items:center;justify-content:space-between}
+.game-header h2{font-size:1.3rem;color:var(--accent)}
+.game-layout{display:grid;grid-template-columns:430px 1fr;gap:18px;align-items:start}
+.wheel-col{display:flex;flex-direction:column;align-items:center;gap:12px}
+.wheel-wrap{position:relative;width:420px;height:420px;flex-shrink:0}
+#wheel-canvas{display:block}
+.ptr{position:absolute;right:-10px;top:50%;transform:translateY(-50%);width:0;height:0;
+  border-top:15px solid transparent;border-bottom:15px solid transparent;
+  border-right:30px solid var(--gold);filter:drop-shadow(0 0 7px #ffd70099)}
+.spin-result{background:var(--surface);border:2px solid var(--accent);border-radius:12px;
+  padding:13px 20px;text-align:center;width:100%}
+.sr-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+#sr-word{font-size:1.4rem;font-weight:700;color:var(--gold);min-height:34px;word-break:break-word}
+#sr-word.revealed{animation:wordPop .6s cubic-bezier(.175,.885,.32,1.275) forwards}
+@keyframes wordPop{0%{transform:scale(2.4);opacity:0;filter:blur(10px)}100%{transform:scale(1);opacity:1;filter:blur(0)}}
+#btn-spin{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+  padding:13px 0;font-size:1rem;border-radius:50px;width:100%;letter-spacing:.5px}
+.hist-wrap .hist-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.hist{font-size:11px;color:var(--dim);line-height:1.9}
+.hist span{margin-right:6px}
+.info-col{display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 140px);overflow-y:auto}
+.vote-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.vote-panel h3{font-size:calc(var(--fs) - 1px);margin-bottom:10px;color:var(--accent)}
+.vote-claim{background:var(--card);border-radius:8px;padding:10px 14px;margin-bottom:8px;text-align:center}
+.vote-claim .vname{font-size:1rem;font-weight:700;color:var(--gold)}
+.vote-claim .vchar{font-size:11px;color:var(--accent);margin-top:2px}
+.vote-claim .vwiki{font-size:11px;margin-top:4px}
+.vote-tally{font-size:12px;color:var(--muted);margin-bottom:6px}
+.voter-list{display:flex;flex-direction:column;gap:3px}
+.voter-item{display:flex;justify-content:space-between;font-size:12px;padding:2px 0}
+.v-tag{padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.v-tag.yes{background:var(--green);color:#fff}
+.v-tag.no{background:#6b2737;color:#fff}
+.v-tag.wait{background:var(--border);color:var(--muted)}
+.players-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.players-panel h3{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.game-player-row{display:flex;align-items:center;justify-content:space-between;
+  padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.game-player-row:last-child{border-bottom:none}
+.log-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.log-panel h3{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+#game-log{font-size:11px;color:var(--dim);display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
+.log-entry{padding:4px 0;border-bottom:1px solid var(--surface)}
+.log-entry.pass{color:#52b788}.log-entry.fail{color:var(--red)}.log-entry.spin{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<!-- settings drawer -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeSettings()"></div>
+<div id="settings-drawer">
+  <div class="drawer-hdr"><h3>⚙ Settings</h3><button class="drawer-close" onclick="closeSettings()">✕</button></div>
+  <div class="drawer-section"><label>Theme</label><div class="theme-grid" id="theme-grid"></div></div>
+  <div class="drawer-section">
+    <label>Font Family</label>
+    <select id="font-family-sel" onchange="applyFont()">
+      <option>Segoe UI</option><option>Arial</option><option>Georgia</option>
+      <option>Courier New</option><option>Trebuchet MS</option>
+    </select>
+  </div>
+  <div class="drawer-section">
+    <label>Font Size — <span id="fs-val">14px</span></label>
+    <div class="font-row"><span style="font-size:10px">A</span>
+      <input type="range" min="11" max="20" value="14" id="font-size-range" oninput="applyFont()">
+      <span style="font-size:18px">A</span></div>
+  </div>
+  <div class="drawer-section">
+    <label data-i18n="label-lang">Language</label>
+    <button id="lang-btn" class="lang-btn" onclick="toggleLang()">🇹🇭 ภาษาไทย</button>
+  </div>
+  <div class="drawer-section">
+    <label data-i18n="label-photos">Show Celebrity Photos</label>
+    <div class="photos-row">
+      <input type="checkbox" id="chk-photos" checked onchange="setPhotos(this.checked)">
+      <span style="font-size:11px;color:var(--muted)" data-i18n="photos-hint">Loads from Wikipedia</span>
+    </div>
+  </div>
+  <div class="drawer-section" style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+    <button class="reset-btn" onclick="resetSettings()" data-i18n="btn-reset">Reset to Default</button>
+  </div>
+  <div id="fw-section" class="drawer-section" style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+    <label style="color:var(--red)">Network / Firewall</label>
+    <p style="font-size:10px;color:var(--dim);margin-bottom:6px;line-height:1.5">
+      If other devices see a blank page or keep loading, Windows Firewall is blocking the server.
+    </p>
+    <button id="btn-firewall" class="reset-btn" onclick="fixFirewall()"
+      style="background:#6b2737;color:#fff;border-color:#6b2737;margin-bottom:5px">
+      🛡️ Allow through Windows Firewall (UAC)
+    </button>
+    <button class="reset-btn" onclick="if(window.api)window.api.openFirewallSettings()"
+      style="font-size:11px">
+      ⚙ Open Firewall Settings manually
+    </button>
+    <p id="firewall-msg" style="font-size:10px;margin-top:5px;display:none"></p>
+    <button id="btn-test-conn" class="reset-btn" onclick="testConnection()"
+      style="margin-top:5px;font-size:11px">
+      🔍 Test network connection
+    </button>
+    <p id="test-msg" style="font-size:10px;margin-top:4px;display:none"></p>
+  </div>
+</div>
+<button class="fab" onclick="toggleSettings()">⚙</button>
+
+<!-- WELCOME -->
+<div id="ph-welcome">
+  <h1 data-i18n="app-title">Celebrity Bingo</h1>
+  <p class="sub" data-i18n="welcome-sub">Spin the wheel · Match the trait · Mark your card · BINGO!</p>
+  <div class="rules-card">
+    <p>🎡 <b>Host</b> picks traits for the spin wheel and a pool of famous names<br>
+       🎴 <b>Players</b> join on their own device (phone or browser)<br>
+       🎰 <b>Spin</b> — if your person fits the trait, click Announce Match!<br>
+       🗳️ Everyone <b>votes</b> to confirm — majority wins<br>
+       🏆 First to complete a line <b>wins!</b></p>
+  </div>
+  <button class="btn-p" onclick="showSetup()" data-i18n="btn-host-setup">Host Setup →</button>
+</div>
+
+<!-- SETUP -->
+<div id="ph-setup" class="hidden">
+  <h2>Host Setup</h2>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="tab('ww',this)" data-i18n="tab-ww">🎡 Wheel Words</button>
+    <button class="tab-btn" onclick="tab('nm',this)" data-i18n="tab-nm">👥 Name Pool</button>
+    <button class="tab-btn" onclick="tab('gs',this)" data-i18n="tab-gs">⚙️ Game Settings</button>
+  </div>
+  <div id="p-ww" class="panel active">
+    <p class="hint">Click words to toggle them on/off. Active words go on the spin wheel.</p>
+    <div class="pool-actions">
+      <button class="btn-s" onclick="wwSelectAll()" data-i18n="btn-select-all">✓ Select All</button>
+      <button class="btn-s" onclick="wwClearAll()" data-i18n="btn-clear-all">✗ Clear All</button>
+      <button class="btn-s" onclick="wwRandom()" title="Randomly pick 20 words">🎲 Random 20</button>
+    </div>
+    <div class="input-row">
+      <input id="ww-in" placeholder="Add a custom characteristic…" onkeydown="if(event.key==='Enter')addWWCustom()">
+      <button class="btn-add" onclick="addWWCustom()">+ Add</button>
+    </div>
+    <div class="pool-wrap"><div class="pool-grid" id="ww-grid"></div></div>
+    <p class="pool-count" id="ww-count">0 active</p>
+  </div>
+  <div id="p-nm" class="panel">
+    <p class="hint">Click names to toggle. 🔗 opens Wikipedia. Active names go into the player pool.</p>
+    <div class="pool-actions">
+      <button class="btn-s" onclick="nmSelectAll()" data-i18n="btn-select-all">✓ Select All</button>
+      <button class="btn-s" onclick="nmClearAll()" data-i18n="btn-clear-all">✗ Clear All</button>
+      <button class="btn-s" onclick="nmRandom()" title="Randomly pick 30 names">🎲 Random 30</button>
+    </div>
+    <div class="input-row">
+      <input id="nm-in" placeholder="Add a custom name…" onkeydown="if(event.key==='Enter')addNMCustom()">
+      <button class="btn-add" onclick="addNMCustom()">+ Add</button>
+    </div>
+    <textarea class="bulk-ta" id="bulk-ta" placeholder="Or paste multiple names, one per line…"></textarea>
+    <button class="btn-s" style="margin-bottom:10px" onclick="addBulk()">Add All Lines</button>
+    <div class="pool-wrap"><div class="pool-grid" id="nm-grid"></div></div>
+    <p class="pool-count" id="nm-count">0 active</p>
+  </div>
+  <div id="p-gs" class="panel">
+    <div class="settings-grid">
+      <div class="sg"><label>Grid Size</label>
+        <div class="size-row">
+          <button class="sz" onclick="setGrid(3,this)">3×3</button>
+          <button class="sz active" onclick="setGrid(4,this)">4×4</button>
+          <button class="sz" onclick="setGrid(5,this)">5×5</button>
+        </div></div>
+      <div class="sg"><label>Players</label>
+        <div class="prow">
+          <button class="adj" onclick="adjP(-1)">−</button>
+          <input type="number" id="np" value="4" min="2" max="12" readonly>
+          <button class="adj" onclick="adjP(1)">+</button>
+        </div></div>
+    </div>
+    <div class="toggle-row" style="margin-top:14px">
+      <input type="checkbox" id="chk-free" checked>
+      <label for="chk-free">Free center space (odd grids only)</label>
+    </div>
+    <div class="toggle-row">
+      <input type="checkbox" id="chk-repeat" checked>
+      <label for="chk-repeat">Allow same name on multiple cards</label>
+    </div>
+    <div style="margin-top:16px">
+      <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:7px">Player Names</label>
+      <div id="pnames-list"></div>
+    </div>
+  </div>
+  <div class="bottom-bar">
+    <p class="err" id="setup-err"></p>
+    <button class="btn-p" onclick="startCards()" data-i18n="btn-open-lobby">Open Lobby →</button>
+  </div>
+</div>
+
+<!-- CARDS PHASE -->
+<div id="ph-cards" class="hidden">
+  <h2>Card Setup</h2>
+  <div class="cards-top">
+    <div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:12px">
+        Players scan the QR code or open the URL on their device.</p>
+      <div class="setup-status" id="setup-status"></div>
+    </div>
+    <div class="join-panel">
+      <h3>Players: Join Here</h3>
+      <img id="qr-img" src="" alt="QR Code" width="160" height="160">
+      <p id="join-url" style="font-size:12px;color:var(--accent);word-break:break-all;margin-bottom:4px">—</p>
+      <p class="join-hint">Scan QR or open URL in browser<br>(must be on the same Wi-Fi)</p>
+      <div id="extra-urls" style="font-size:11px;color:var(--dim);margin-top:4px;display:none">
+        <span style="color:var(--muted)">Other addresses:</span><br>
+        <span id="other-urls-list"></span>
+      </div>
+      <p style="font-size:10px;color:var(--dim);margin-top:8px">
+        Not connecting? Open ⚙ Settings → Firewall
+      </p>
+    </div>
+  </div>
+  <div class="cards-actions">
+    <button class="btn-s" onclick="if(confirm('Go back?')){socket.emit('host-new-game');location.reload()}">← Back</button>
+    <button class="btn-p" id="btn-start-game" onclick="hostStartGame()" disabled>Start Game →</button>
+  </div>
+</div>
+
+<!-- GAME PHASE -->
+<div id="ph-game" class="hidden">
+  <div class="game-header">
+    <h2>Celebrity Bingo</h2>
+    <button class="btn-d" onclick="if(confirm('New game?')){socket.emit('host-new-game');location.reload()}">↺ New Game</button>
+  </div>
+  <div class="game-layout">
+    <div class="wheel-col">
+      <div class="wheel-wrap">
+        <canvas id="wheel-canvas" width="420" height="420"></canvas>
+        <div class="ptr"></div>
+      </div>
+      <div class="spin-result">
+        <div class="sr-label">Current Characteristic</div>
+        <div id="sr-word">—</div>
+      </div>
+      <button id="btn-spin" onclick="doSpin()" data-i18n="btn-spin">SPIN THE WHEEL</button>
+      <div class="hist-wrap">
+        <div class="hist-label" id="hist-lbl" style="display:none">Previous spins</div>
+        <div class="hist" id="hist"></div>
+      </div>
+    </div>
+    <div class="info-col">
+      <div class="vote-panel hidden" id="vote-panel">
+        <h3>🗳️ Vote in Progress</h3>
+        <div class="vote-claim">
+          <div class="vname" id="vp-name"></div>
+          <div class="vchar" id="vp-char"></div>
+          <div class="vwiki" id="vp-wiki"></div>
+        </div>
+        <p class="vote-tally" id="vp-tally"></p>
+        <div class="voter-list" id="voter-list"></div>
+      </div>
+      <div class="players-panel">
+        <h3>Players</h3>
+        <div id="game-player-list"></div>
+      </div>
+      <div class="log-panel">
+        <h3>Game Log</h3>
+        <div id="game-log"><p style="color:var(--dim);font-size:11px">Waiting for first spin…</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="renderer.js"></script>
+</body>
+</html>

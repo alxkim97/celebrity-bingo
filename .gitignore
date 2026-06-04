@@ -1,0 +1,4 @@
+node_modules/
+fix-firewall.bat
+.env
+*.local
