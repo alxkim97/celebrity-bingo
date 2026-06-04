@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WheelBingo</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#0f0e17;color:#fffffe;min-height:100vh}
+.hidden{display:none!important}
+button{cursor:pointer;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:600;transition:filter .15s,transform .1s}
+button:hover:not(:disabled){filter:brightness(1.15)}
+button:active:not(:disabled){transform:scale(.97)}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,textarea{background:#1a1a2e;border:1px solid #2a2a4e;border-radius:8px;color:#fffffe;font-family:inherit;font-size:14px;padding:8px 12px;outline:none;width:100%}
+input:focus,textarea:focus{border-color:#a786df}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:#0f0e17}
+::-webkit-scrollbar-thumb{background:#3a3a5e;border-radius:3px}
+
+/* ── SCREENS ── */
+.screen{min-height:100vh;padding:24px;display:flex;flex-direction:column;align-items:center}
+
+/* ── WELCOME ── */
+#sc-welcome{justify-content:center;text-align:center;background:radial-gradient(ellipse at center,#1e1b4b 0%,#0f0e17 70%)}
+#sc-welcome h1{font-size:3.5rem;color:#a786df;margin-bottom:6px;letter-spacing:-1px}
+.subtitle{font-size:1.05rem;color:#666;margin-bottom:40px}
+.rules-box{max-width:480px;background:#1a1a2e;border-radius:16px;padding:24px;margin-bottom:40px;text-align:left}
+.rules-box p{color:#aaa;font-size:14px;line-height:2}
+.rules-box b{color:#fffffe}
+.btn-primary{background:#a786df;color:#0f0e17;padding:16px 48px;font-size:1.1rem;border-radius:50px}
+
+/* ── HOST SETUP ── */
+#sc-setup{max-width:900px;width:100%}
+#sc-setup h2{font-size:1.8rem;margin-bottom:20px}
+.tabs{display:flex;gap:3px;margin-bottom:0}
+.tab-btn{background:#1a1a2e;color:#666;padding:10px 22px;border-radius:8px 8px 0 0;font-size:14px}
+.tab-btn.active{background:#1e1b4b;color:#a786df;border-bottom:2px solid #a786df}
+.tab-panel{display:none;background:#1e1b4b;border-radius:0 8px 8px 8px;padding:24px;margin-bottom:0}
+.tab-panel.active{display:block}
+.hint{font-size:12px;color:#666;margin-bottom:10px}
+.preset-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.chip{background:#12111e;border:1px solid #2a2a4e;border-radius:20px;padding:4px 11px;font-size:12px;color:#a786df;cursor:pointer;transition:background .1s}
+.chip:hover{background:#2a2a4e}
+.input-row{display:flex;gap:8px;margin-bottom:14px}
+.input-row input{flex:1}
+.btn-add{background:#a786df;color:#0f0e17;padding:8px 18px;white-space:nowrap;flex-shrink:0}
+.tag-list{display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto;padding:2px}
+.tag{background:#12111e;border:1px solid #2a2a4e;border-radius:20px;padding:5px 12px;font-size:12px;display:flex;align-items:center;gap:7px}
+.tag-rm{background:none;color:#555;font-size:15px;padding:0;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}
+.tag-rm:hover{color:#ff6b6b!important}
+.count-label{font-size:12px;color:#555;margin-top:10px}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.setting-group{display:flex;flex-direction:column;gap:8px}
+.setting-group label{font-size:12px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.8px}
+.size-btns{display:flex;gap:6px}
+.size-btn{background:#12111e;color:#888;padding:8px 0;flex:1;border:1px solid #2a2a4e}
+.size-btn.active{background:#a786df;color:#0f0e17;border-color:#a786df}
+.players-row{display:flex;align-items:center;gap:10px}
+.players-row input{width:60px;flex:none;text-align:center}
+.btn-adj{background:#12111e;color:#fffffe;padding:6px 14px;border:1px solid #2a2a4e}
+#player-names-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.bottom-bar{margin-top:24px;display:flex;justify-content:space-between;align-items:center;width:100%;max-width:900px}
+.err-msg{font-size:13px;color:#ff6b6b}
+.btn-next{background:#a786df;color:#0f0e17;padding:12px 32px;font-size:1rem}
+.btn-sec{background:#1a1a2e;color:#fffffe;padding:9px 20px;border:1px solid #2a2a4e}
+
+/* ── BULK NAMES ── */
+#bulk-area{margin-bottom:10px}
+#bulk-area textarea{height:70px;resize:vertical;font-size:13px}
+
+/* ── CARD SETUP ── */
+#sc-cards{max-width:960px;width:100%}
+.card-hdr{width:100%;margin-bottom:20px}
+.card-hdr h2{font-size:1.6rem}
+.card-hdr p{color:#888;font-size:13px;margin-top:4px}
+.card-layout{display:grid;grid-template-columns:190px 1fr;gap:20px;width:100%}
+.names-panel h3{font-size:11px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.names-list{display:flex;flex-direction:column;gap:3px;max-height:calc(100vh - 260px);overflow-y:auto;padding-right:4px}
+.name-item{background:#1a1a2e;border:1px solid #2a2a4e;border-radius:6px;padding:7px 11px;font-size:12px;cursor:grab;user-select:none;transition:background .1s,border-color .1s}
+.name-item:hover:not(.used){background:#1e1b4b;border-color:#a786df}
+.name-item.used{opacity:.35;cursor:default}
+.name-item.dragging{opacity:.4}
+.grid-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;overflow-x:auto}
+.bingo-grid{display:grid;gap:5px}
+.b-cell{background:#1a1a2e;border:2px dashed #2a2a4e;border-radius:8px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;padding:6px;line-height:1.35;transition:border-color .15s,background .15s;position:relative;width:105px;height:75px}
+.b-cell.filled{border-style:solid;border-color:#a786df;background:#1e1b4b}
+.b-cell.free{border-style:solid;border-color:#a786df;background:linear-gradient(135deg,#a786df22,#ff6b6b22);color:#c4a8ef;font-weight:700;font-size:10px;letter-spacing:1px;cursor:default}
+.b-cell.drag-over{background:#1e1b4b;border-color:#ffd700;border-style:solid}
+.b-cell .cell-x{position:absolute;top:1px;right:3px;background:none;color:#555;font-size:13px;padding:0;width:15px;height:15px;border-radius:50%;display:none;align-items:center;justify-content:center;line-height:1}
+.b-cell.filled:hover .cell-x{display:flex}
+.cell-x:hover{color:#ff6b6b!important}
+.prog{font-size:12px;color:#888}
+.prog span{color:#a786df;font-weight:700}
+.card-actions{display:flex;gap:10px;margin-top:4px}
+
+/* ── GAME SCREEN ── */
+#sc-game{max-width:1200px;width:100%}
+.game-hdr{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:20px}
+.game-hdr h2{font-size:1.4rem;color:#a786df}
+.game-layout{display:grid;grid-template-columns:360px 1fr;gap:22px;width:100%}
+
+/* Wheel */
+.wheel-col{display:flex;flex-direction:column;align-items:center;gap:14px}
+.wheel-wrap{position:relative;width:340px;height:340px;flex-shrink:0}
+#wheel-canvas{display:block}
+.wheel-ptr{position:absolute;right:-10px;top:50%;transform:translateY(-50%);width:0;height:0;border-top:13px solid transparent;border-bottom:13px solid transparent;border-right:26px solid #ffd700;filter:drop-shadow(0 0 5px #ffd70099)}
+.spin-result{background:#1a1a2e;border:2px solid #a786df;border-radius:12px;padding:14px 20px;text-align:center;width:100%}
+.spin-result .sr-label{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.spin-result .sr-word{font-size:1.35rem;font-weight:700;color:#ffd700;min-height:34px;word-break:break-word}
+#btn-spin{background:linear-gradient(135deg,#a786df,#7c53c3);color:#fff;padding:13px 0;font-size:1.05rem;border-radius:50px;width:100%;letter-spacing:.5px}
+.spin-hist{font-size:11px;color:#444;text-align:center;line-height:1.8}
+.spin-hist span{margin:0 4px}
+.hist-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.8px}
+
+/* Player cards */
+.players-col{display:flex;flex-direction:column;gap:12px;overflow-y:auto;max-height:calc(100vh - 120px)}
+.p-card{background:#1a1a2e;border:1px solid #2a2a4e;border-radius:12px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.p-card.bingo{border-color:#ffd700;box-shadow:0 0 14px #ffd70033}
+.p-card-hdr{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;background:#12111e;cursor:pointer;user-select:none}
+.p-card-hdr .pname{font-weight:700;font-size:14px}
+.bingo-badge{background:#ffd700;color:#0f0e17;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700;display:none}
+.p-card.bingo .bingo-badge{display:block}
+.toggle-icon{background:none;color:#555;font-size:16px;padding:0;transition:transform .2s}
+.p-card.open .toggle-icon{transform:rotate(180deg)}
+.p-card-body{display:none;padding:12px}
+.p-card.open .p-card-body{display:block}
+.mini-grid{display:grid;gap:3px;margin-bottom:10px}
+.m-cell{background:#0f0e17;border:1px solid #1e1b3a;border-radius:5px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:9px;padding:3px;line-height:1.25;position:relative;width:75px;height:52px}
+.m-cell.free-c{color:#a786df;font-weight:700;font-size:9px;background:#1a1a2e}
+.m-cell.marked::after{content:'✕';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#ff6b6b;background:#ff6b6b1a;border-radius:5px}
+.m-cell.free-c.marked::after{color:#a786df;background:#a786df15;content:'★';font-size:22px}
+.ann-btn{background:#e63946;color:#fff;padding:8px 14px;width:100%;font-size:13px;border-radius:8px}
+
+/* ── MODALS ── */
+.overlay{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(5px)}
+.modal{background:#1a1a2e;border:1px solid #3a3a5e;border-radius:16px;padding:28px;max-width:480px;width:90%;max-height:88vh;overflow-y:auto}
+.modal h3{font-size:1.2rem;margin-bottom:6px}
+.modal .sub{font-size:13px;color:#888;margin-bottom:4px}
+.claim-box{background:#0f0e17;border-radius:10px;padding:14px 18px;margin:14px 0;text-align:center}
+.claim-name{font-size:1.15rem;font-weight:700;color:#ffd700}
+.claim-char{font-size:13px;color:#a786df;margin-top:3px}
+
+/* Announce select */
+.name-sel-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;margin:12px 0}
+.nsl-item{background:#0f0e17;border:1px solid #2a2a4e;border-radius:8px;padding:11px 14px;cursor:pointer;font-size:13px;transition:border-color .1s,background .1s}
+.nsl-item:hover{background:#1e1b4b;border-color:#a786df}
+.nsl-item.sel{background:#1e1b4b;border-color:#ffd700}
+.modal-actions{display:flex;gap:8px;margin-top:12px}
+.btn-confirm{background:#ffd700;color:#0f0e17;padding:10px 22px;flex:1}
+.btn-cancel{background:#1e1b4b;color:#fffffe;padding:10px 22px;border:1px solid #2a2a4e}
+
+/* Vote */
+.vote-list{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.v-item{display:flex;align-items:center;gap:10px}
+.v-item .vname{flex:1;font-size:13px}
+.v-btns{display:flex;gap:5px}
+.v-yes{background:#2d6a4f;color:#fff;padding:6px 14px;font-size:12px}
+.v-yes.voted{background:#40916c}
+.v-no{background:#6b2737;color:#fff;padding:6px 14px;font-size:12px}
+.v-no.voted{background:#9d0208}
+.vote-res{text-align:center;padding:14px;font-size:1.05rem;font-weight:700;border-radius:8px;margin-top:4px}
+.vote-res.pass{color:#52b788;background:#52b78815}
+.vote-res.fail{color:#e63946;background:#e6394615}
+.btn-close-vote{background:#a786df;color:#0f0e17;padding:10px 0;width:100%;margin-top:12px}
+
+/* Win */
+.win-modal{text-align:center}
+.win-title{font-size:3.2rem;color:#ffd700;margin-bottom:4px;letter-spacing:-1px}
+.win-sub{font-size:1.3rem;color:#a786df;margin-bottom:8px}
+.win-player{font-size:1.6rem;font-weight:700;margin-bottom:24px}
+.btn-again{background:#a786df;color:#0f0e17;padding:13px 36px;font-size:1rem}
+.confetti-line{font-size:2rem;letter-spacing:6px;margin-bottom:8px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  .game-layout,.card-layout,.settings-grid{grid-template-columns:1fr}
+  .b-cell{width:80px;height:65px}
+  .m-cell{width:60px;height:44px}
+  #sc-welcome h1{font-size:2.4rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════ WELCOME ════════════ -->
+<div id="sc-welcome" class="screen">
+  <h1>WheelBingo</h1>
+  <p class="subtitle">Spin the wheel · Match the trait · Mark your card · BINGO!</p>
+  <div class="rules-box">
+    <p>
+      🎡 <b>Host</b> adds traits to the spin wheel and famous names to the pool<br>
+      🎴 <b>Players</b> drag names onto their personal bingo card<br>
+      🎰 <b>Spin</b> — if your person fits the trait, announce it!<br>
+      🗳️ Everyone <b>votes</b> to confirm the match<br>
+      🏆 First to complete a line <b>wins!</b>
+    </p>
+  </div>
+  <button class="btn-primary" onclick="goSetup()">Host Setup →</button>
+</div>
+
+<!-- ════════════ HOST SETUP ════════════ -->
+<div id="sc-setup" class="screen hidden">
+  <h2>Host Setup</h2>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="tab('wheel',this)">🎡 Wheel Words</button>
+    <button class="tab-btn" onclick="tab('names',this)">👥 Name Pool</button>
+    <button class="tab-btn" onclick="tab('settings',this)">⚙️ Game Settings</button>
+  </div>
+
+  <!-- Wheel Words -->
+  <div id="tab-wheel" class="tab-panel active">
+    <p class="hint">Add characteristics for the spin wheel — aim for 20–60 for a good mix.</p>
+    <div class="preset-chips" id="preset-wheel"></div>
+    <div class="input-row">
+      <input id="ww-input" placeholder="e.g. billionaire, scientist, cartoon character…" onkeydown="if(event.key==='Enter')addWW()">
+      <button class="btn-add" onclick="addWW()">+ Add</button>
+    </div>
+    <div class="tag-list" id="ww-list"></div>
+    <p class="count-label" id="ww-count">0 words</p>
+  </div>
+
+  <!-- Names -->
+  <div id="tab-names" class="tab-panel">
+    <p class="hint">Add famous people (real or fictional). Players pick from this list for their bingo cards.</p>
+    <div class="preset-chips" id="preset-names"></div>
+    <div class="input-row">
+      <input id="nm-input" placeholder="e.g. Elon Musk, Hermione Granger…" onkeydown="if(event.key==='Enter')addNM()">
+      <button class="btn-add" onclick="addNM()">+ Add</button>
+    </div>
+    <div id="bulk-area">
+      <textarea id="bulk-ta" placeholder="Paste multiple names — one per line — then click Add All"></textarea>
+      <button class="btn-sec" style="margin-top:6px" onclick="addBulk()">Add All Lines</button>
+    </div>
+    <div class="tag-list" id="nm-list"></div>
+    <p class="count-label" id="nm-count">0 names</p>
+  </div>
+
+  <!-- Settings -->
+  <div id="tab-settings" class="tab-panel">
+    <div class="settings-grid">
+      <div class="setting-group">
+        <label>Grid Size</label>
+        <div class="size-btns">
+          <button class="size-btn" onclick="setGrid(3,this)">3×3</button>
+          <button class="size-btn active" onclick="setGrid(4,this)">4×4</button>
+          <button class="size-btn" onclick="setGrid(5,this)">5×5</button>
+        </div>
+        <p class="hint" id="free-hint" style="display:none">Odd grids include a FREE center space.</p>
+      </div>
+      <div class="setting-group">
+        <label>Players</label>
+        <div class="players-row">
+          <button class="btn-adj" onclick="adjP(-1)">−</button>
+          <input type="number" id="np-input" value="4" min="2" max="12" readonly>
+          <button class="btn-adj" onclick="adjP(1)">+</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:18px">
+      <label style="font-size:12px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px">Player Names</label>
+      <div id="player-names-list"></div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <p class="err-msg" id="setup-err"></p>
+    <button class="btn-next" onclick="goCards()">Start Card Setup →</button>
+  </div>
+</div>
+
+<!-- ════════════ CARD SETUP ════════════ -->
+<div id="sc-cards" class="screen hidden">
+  <div class="card-hdr">
+    <h2 id="card-title">Player 1's Card</h2>
+    <p id="card-sub">Drag names from the list onto your bingo card, then hand the device to the next player.</p>
+  </div>
+  <div class="card-layout">
+    <div class="names-panel">
+      <h3>Name Pool</h3>
+      <div class="names-list" id="drag-names"></div>
+    </div>
+    <div class="grid-wrap">
+      <div id="setup-grid" class="bingo-grid"></div>
+      <p class="prog" id="grid-prog">Fill <span id="cells-left">0</span> more cells</p>
+      <div class="card-actions">
+        <button class="btn-sec" onclick="clearCard()">Clear Card</button>
+        <button class="btn-next" id="btn-done" onclick="doneCard()" disabled>Done →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ GAME SCREEN ════════════ -->
+<div id="sc-game" class="screen hidden">
+  <div class="game-hdr">
+    <h2>WheelBingo</h2>
+    <button class="btn-sec" onclick="newGameConfirm()">↺ New Game</button>
+  </div>
+  <div class="game-layout">
+    <div class="wheel-col">
+      <div class="wheel-wrap">
+        <canvas id="wheel-canvas" width="340" height="340"></canvas>
+        <div class="wheel-ptr"></div>
+      </div>
+      <div class="spin-result">
+        <div class="sr-label">Current Characteristic</div>
+        <div class="sr-word" id="sr-word">—</div>
+      </div>
+      <button id="btn-spin" onclick="spin()">SPIN THE WHEEL</button>
+      <div>
+        <div class="hist-label" id="hist-label" style="display:none">Previous spins</div>
+        <div class="spin-hist" id="spin-hist"></div>
+      </div>
+    </div>
+    <div class="players-col" id="players-col"></div>
+  </div>
+</div>
+
+<!-- ════════════ ANNOUNCE MODAL ════════════ -->
+<div class="overlay hidden" id="ann-overlay">
+  <div class="modal">
+    <h3>Announce a Match</h3>
+    <p class="sub">Select which name on your card matches:</p>
+    <div class="claim-box">
+      <div class="claim-char" id="ann-char" style="font-size:1.1rem;font-weight:700;color:#ffd700"></div>
+    </div>
+    <div class="name-sel-list" id="ann-list"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="annCancel()">Cancel</button>
+      <button class="btn-confirm" id="btn-ann-confirm" onclick="annConfirm()" disabled>Confirm →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ VOTE MODAL ════════════ -->
+<div class="overlay hidden" id="vote-overlay">
+  <div class="modal">
+    <h3>Cast Your Votes</h3>
+    <div class="claim-box">
+      <div class="claim-name" id="v-name"></div>
+      <div class="claim-char" id="v-char"></div>
+    </div>
+    <div class="vote-list" id="vote-list"></div>
+    <div class="vote-res hidden" id="vote-res"></div>
+    <button class="btn-close-vote hidden" id="btn-close-vote" onclick="closeVote()">Continue</button>
+  </div>
+</div>
+
+<!-- ════════════ WIN MODAL ════════════ -->
+<div class="overlay hidden" id="win-overlay">
+  <div class="modal win-modal">
+    <div class="confetti-line">🎉🎊🎉🎊🎉</div>
+    <div class="win-title">BINGO!</div>
+    <div class="win-sub">We have a winner!</div>
+    <div class="win-player" id="win-player"></div>
+    <button class="btn-again" onclick="newGameConfirm()">Play Again</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════
+const G = {
+  wheelWords: [],
+  names: [],
+  gridSize: 4,
+  numPlayers: 4,
+  playerNames: [],
+  players: [],       // {name, grid[][], marked[][]}
+  setupIdx: 0,       // current player setting up card
+
+  currentSpin: null,
+  spinHistory: [],
+  spinning: false,
+  wheelAngle: 0,
+
+  annPlayerIdx: null,
+  annCell: null,     // {row, col, name}
+
+  vote: null,        // {playerIdx, row, col, name, votes:{[i]:bool|null}, resolved}
+};
+
+// ════════════════════════════════════════════════════════
+// PRESETS
+// ════════════════════════════════════════════════════════
+const WW_PRESETS = [
+  'Billionaire','American','Scientist','Athlete','Actor / Actress',
+  'Musician','Politician','Fictional character','Non-human','Female',
+  'Male','Under 30 years old','Over 60 years old','Taller than 180 cm',
+  'Nobel Prize winner','Olympic gold medalist','Has a PhD','Born in Asia',
+  'Born in Europe','Has a superpower','Villain','Hero','Royalty',
+  'Deceased','Currently alive','CEO or Founder','Anime character',
+  'Movie character','Book character','Cartoon character','From the 1900s',
+  'From the 2000s','Married','Single','Animal','Robot or AI','Alien',
+  'Speaks multiple languages','Has red hair','Person of color',
+  'From a franchise','Won a Grammy','Has been to space',
+];
+
+const NM_PRESETS = [
+  'Elon Musk','Albert Einstein','Marie Curie','Nikola Tesla',
+  'Barack Obama','Taylor Swift','Beyoncé','LeBron James',
+  'Harry Potter','Hermione Granger','Tony Stark','Batman',
+  'Spider-Man','Oprah Winfrey','Stephen Hawking','Nelson Mandela',
+  'Cristiano Ronaldo','Lionel Messi','Serena Williams','Simone Biles',
+  'Leonardo da Vinci','Shakespeare','Cleopatra','Napoleon Bonaparte',
+  'Abraham Lincoln','Martin Luther King Jr.','Mahatma Gandhi',
+  'Jeff Bezos','Mark Zuckerberg','Bill Gates','Steve Jobs',
+  'Marilyn Monroe','Elvis Presley','Michael Jackson',
+  'Darth Vader','Yoda','Gandalf','Sherlock Holmes',
+  'Mickey Mouse','Bugs Bunny','Pikachu','Goku',
+  'Wonder Woman','Black Panther','Frodo Baggins','Daenerys Targaryen',
+];
+
+const WHEEL_COLORS = [
+  '#e63946','#457b9d','#2d6a4f','#e9c46a','#9d4edd',
+  '#f4a261','#2a9d8f','#e76f51','#a8dadc55','#6d6875',
+  '#b5e48c','#f77f00','#4cc9f0','#c77dff','#80b918',
+  '#ff6b6b','#48cae4','#023e8a','#d62828','#588157',
+];
+
+// ════════════════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════════════════
+function showScreen(id) {
+  ['sc-welcome','sc-setup','sc-cards','sc-game'].forEach(s =>
+    document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function goSetup() {
+  showScreen('sc-setup');
+  buildPresets();
+  renderPNames();
+  updateFreeHint();
+}
+
+function goCards() {
+  const err = document.getElementById('setup-err');
+  if (G.wheelWords.length < 5) { err.textContent = 'Add at least 5 wheel words first.'; return; }
+  const minNames = G.gridSize * G.gridSize - (G.gridSize % 2 === 1 ? 1 : 0);
+  if (G.names.length < minNames) {
+    err.textContent = `Need at least ${minNames} names for a ${G.gridSize}×${G.gridSize} card.`;
+    return;
+  }
+  err.textContent = '';
+
+  G.playerNames = [];
+  for (let i = 0; i < G.numPlayers; i++) {
+    const el = document.getElementById(`pn-${i}`);
+    G.playerNames.push((el ? el.value.trim() : '') || `Player ${i + 1}`);
+  }
+
+  const mid = Math.floor(G.gridSize / 2);
+  G.players = G.playerNames.map(name => {
+    const grid = Array.from({length: G.gridSize}, () => Array(G.gridSize).fill(null));
+    const marked = Array.from({length: G.gridSize}, () => Array(G.gridSize).fill(false));
+    if (G.gridSize % 2 === 1) {
+      grid[mid][mid] = 'FREE';
+      marked[mid][mid] = true;
+    }
+    return {name, grid, marked, hasBingo: false};
+  });
+
+  G.setupIdx = 0;
+  showScreen('sc-cards');
+  renderCardSetup();
+}
+
+function goGame() {
+  G.currentSpin = null;
+  G.spinHistory = [];
+  G.spinning = false;
+  G.wheelAngle = 0;
+  showScreen('sc-game');
+  renderPlayers();
+  drawWheel();
+}
+
+// ════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════
+function tab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`tab-${id}`).classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════
+// PRESETS
+// ════════════════════════════════════════════════════════
+let presetsBuilt = false;
+function buildPresets() {
+  if (presetsBuilt) return;
+  presetsBuilt = true;
+  const wc = document.getElementById('preset-wheel');
+  WW_PRESETS.forEach(w => {
+    const c = document.createElement('span');
+    c.className = 'chip'; c.textContent = w;
+    c.onclick = () => addWWVal(w);
+    wc.appendChild(c);
+  });
+  const nc = document.getElementById('preset-names');
+  NM_PRESETS.forEach(n => {
+    const c = document.createElement('span');
+    c.className = 'chip'; c.textContent = n;
+    c.onclick = () => addNMVal(n);
+    nc.appendChild(c);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// WHEEL WORDS
+// ════════════════════════════════════════════════════════
+function addWW() {
+  const el = document.getElementById('ww-input');
+  addWWVal(el.value.trim());
+  el.value = ''; el.focus();
+}
+function addWWVal(w) {
+  if (!w || G.wheelWords.includes(w)) return;
+  G.wheelWords.push(w);
+  renderWW();
+}
+function rmWW(i) { G.wheelWords.splice(i, 1); renderWW(); }
+function renderWW() {
+  const list = document.getElementById('ww-list');
+  list.innerHTML = '';
+  G.wheelWords.forEach((w, i) => {
+    const t = document.createElement('div'); t.className = 'tag';
+    t.innerHTML = `<span>${w}</span><button class="tag-rm" onclick="rmWW(${i})">×</button>`;
+    list.appendChild(t);
+  });
+  document.getElementById('ww-count').textContent = `${G.wheelWords.length} words`;
+}
+
+// ════════════════════════════════════════════════════════
+// NAMES
+// ════════════════════════════════════════════════════════
+function addNM() {
+  const el = document.getElementById('nm-input');
+  addNMVal(el.value.trim());
+  el.value = ''; el.focus();
+}
+function addNMVal(n) {
+  if (!n || G.names.includes(n)) return;
+  G.names.push(n);
+  renderNM();
+}
+function addBulk() {
+  const ta = document.getElementById('bulk-ta');
+  ta.value.split('\n').map(l => l.trim()).filter(Boolean).forEach(addNMVal);
+  ta.value = '';
+}
+function rmNM(i) { G.names.splice(i, 1); renderNM(); }
+function renderNM() {
+  const list = document.getElementById('nm-list');
+  list.innerHTML = '';
+  G.names.forEach((n, i) => {
+    const t = document.createElement('div'); t.className = 'tag';
+    t.innerHTML = `<span>${n}</span><button class="tag-rm" onclick="rmNM(${i})">×</button>`;
+    list.appendChild(t);
+  });
+  document.getElementById('nm-count').textContent = `${G.names.length} names`;
+}
+
+// ════════════════════════════════════════════════════════
+// SETTINGS
+// ════════════════════════════════════════════════════════
+function setGrid(n, btn) {
+  G.gridSize = n;
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateFreeHint();
+}
+function updateFreeHint() {
+  const el = document.getElementById('free-hint');
+  el.style.display = G.gridSize % 2 === 1 ? 'block' : 'none';
+}
+function adjP(d) {
+  G.numPlayers = Math.max(2, Math.min(12, G.numPlayers + d));
+  document.getElementById('np-input').value = G.numPlayers;
+  renderPNames();
+}
+function renderPNames() {
+  const list = document.getElementById('player-names-list');
+  list.innerHTML = '';
+  for (let i = 0; i < G.numPlayers; i++) {
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.id = `pn-${i}`;
+    inp.placeholder = `Player ${i + 1} name`;
+    inp.value = G.playerNames[i] || '';
+    list.appendChild(inp);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// CARD SETUP
+// ════════════════════════════════════════════════════════
+let dragName = null;
+
+function renderCardSetup() {
+  const p = G.players[G.setupIdx];
+  document.getElementById('card-title').textContent = `${p.name}'s Card`;
+  document.getElementById('card-sub').textContent =
+    `Drag names onto the grid. Pass the device to the next player when done.`;
+  renderDragNames();
+  renderSetupGrid();
+  updateProg();
+}
+
+function usedByPlayer(idx) {
+  const s = new Set();
+  G.players[idx].grid.flat().forEach(n => { if (n && n !== 'FREE') s.add(n); });
+  return s;
+}
+
+function renderDragNames() {
+  const list = document.getElementById('drag-names');
+  list.innerHTML = '';
+  const used = usedByPlayer(G.setupIdx);
+  G.names.forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'name-item' + (used.has(name) ? ' used' : '');
+    item.textContent = name;
+    if (!used.has(name)) {
+      item.draggable = true;
+      item.addEventListener('dragstart', e => {
+        dragName = name;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      item.addEventListener('dragend', () => item.classList.remove('dragging'));
+    }
+    list.appendChild(item);
+  });
+}
+
+function renderSetupGrid() {
+  const grid = document.getElementById('setup-grid');
+  grid.style.gridTemplateColumns = `repeat(${G.gridSize}, 105px)`;
+  grid.innerHTML = '';
+  const p = G.players[G.setupIdx];
+  const mid = Math.floor(G.gridSize / 2);
+
+  for (let r = 0; r < G.gridSize; r++) {
+    for (let c = 0; c < G.gridSize; c++) {
+      const isFree = G.gridSize % 2 === 1 && r === mid && c === mid;
+      const cell = document.createElement('div');
+
+      if (isFree) {
+        cell.className = 'b-cell free';
+        cell.textContent = '★ FREE';
+      } else {
+        const name = p.grid[r][c];
+        cell.className = 'b-cell' + (name ? ' filled' : '');
+        cell.textContent = name || 'Drop here';
+        if (name) {
+          const x = document.createElement('button');
+          x.className = 'cell-x'; x.textContent = '×';
+          x.onclick = e => { e.stopPropagation(); clearCell(r, c); };
+          cell.appendChild(x);
+        }
+        cell.addEventListener('dragover', e => { e.preventDefault(); cell.classList.add('drag-over'); });
+        cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+        cell.addEventListener('drop', e => {
+          e.preventDefault();
+          cell.classList.remove('drag-over');
+          if (dragName) dropCell(r, c, dragName);
+        });
+      }
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function dropCell(r, c, name) {
+  const used = usedByPlayer(G.setupIdx);
+  if (used.has(name)) return;
+  G.players[G.setupIdx].grid[r][c] = name;
+  renderSetupGrid();
+  renderDragNames();
+  updateProg();
+}
+
+function clearCell(r, c) {
+  G.players[G.setupIdx].grid[r][c] = null;
+  renderSetupGrid();
+  renderDragNames();
+  updateProg();
+}
+
+function clearCard() {
+  const p = G.players[G.setupIdx];
+  const mid = Math.floor(G.gridSize / 2);
+  for (let r = 0; r < G.gridSize; r++)
+    for (let c = 0; c < G.gridSize; c++) {
+      if (G.gridSize % 2 === 1 && r === mid && c === mid) continue;
+      p.grid[r][c] = null;
+    }
+  renderCardSetup();
+}
+
+function filledCount() {
+  const p = G.players[G.setupIdx];
+  const mid = Math.floor(G.gridSize / 2);
+  let n = 0;
+  for (let r = 0; r < G.gridSize; r++)
+    for (let c = 0; c < G.gridSize; c++) {
+      if (G.gridSize % 2 === 1 && r === mid && c === mid) continue;
+      if (p.grid[r][c]) n++;
+    }
+  return n;
+}
+
+function totalCells() {
+  return G.gridSize * G.gridSize - (G.gridSize % 2 === 1 ? 1 : 0);
+}
+
+function updateProg() {
+  const left = totalCells() - filledCount();
+  document.getElementById('cells-left').textContent = left;
+  document.getElementById('grid-prog').style.display = left === 0 ? 'none' : 'block';
+  document.getElementById('btn-done').disabled = left > 0;
+}
+
+function doneCard() {
+  G.setupIdx++;
+  if (G.setupIdx >= G.numPlayers) {
+    goGame();
+  } else {
+    window.scrollTo(0, 0);
+    renderCardSetup();
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// WHEEL DRAWING
+// ════════════════════════════════════════════════════════
+function drawWheel() {
+  const canvas = document.getElementById('wheel-canvas');
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const r = cx - 4;
+  const words = G.wheelWords;
+  const n = words.length;
+  if (!n) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const sliceAng = (2 * Math.PI) / n;
+
+  for (let i = 0; i < n; i++) {
+    const start = G.wheelAngle + i * sliceAng;
+    const end = start + sliceAng;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, end);
+    ctx.closePath();
+    ctx.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length];
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Label (only render text if slices are big enough)
+    if (n <= 50) {
+      const mid = start + sliceAng / 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(mid);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#ffffffdd';
+      ctx.shadowColor = 'rgba(0,0,0,.6)';
+      ctx.shadowBlur = 3;
+      const maxCh = n > 25 ? 10 : n > 15 ? 13 : 16;
+      const label = words[i].length > maxCh ? words[i].slice(0, maxCh) + '…' : words[i];
+      const fs = n > 30 ? 8 : n > 20 ? 9 : n > 10 ? 11 : 13;
+      ctx.font = `bold ${fs}px Segoe UI`;
+      ctx.fillText(label, r - 8, 4);
+      ctx.restore();
+    }
+  }
+
+  // Center hub
+  ctx.beginPath();
+  ctx.arc(cx, cy, 22, 0, 2 * Math.PI);
+  ctx.fillStyle = '#0f0e17';
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+// ════════════════════════════════════════════════════════
+// SPIN
+// ════════════════════════════════════════════════════════
+function spin() {
+  if (G.spinning) return;
+  G.spinning = true;
+  document.getElementById('btn-spin').disabled = true;
+  document.getElementById('sr-word').textContent = '…';
+  disableAnnBtns();
+
+  const n = G.wheelWords.length;
+  const resultIdx = Math.floor(Math.random() * n);
+  const sliceAng = (2 * Math.PI) / n;
+
+  // Target: center of resultIdx slice aligns with pointer (angle 0 = right/3 o'clock)
+  const targetOffset = (-(resultIdx * sliceAng + sliceAng / 2) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const currentMod = ((G.wheelAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  let delta = targetOffset - currentMod;
+  if (delta < 0) delta += 2 * Math.PI;
+  const extraSpins = (5 + Math.floor(Math.random() * 5)) * 2 * Math.PI;
+  const target = G.wheelAngle + delta + extraSpins;
+
+  const duration = 3200 + Math.random() * 1600;
+  const startAngle = G.wheelAngle;
+  const startTime = performance.now();
+
+  const easeOut = t => 1 - Math.pow(1 - t, 4);
+
+  (function animate(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    G.wheelAngle = startAngle + (target - startAngle) * easeOut(t);
+    drawWheel();
+    if (t < 1) { requestAnimationFrame(animate); return; }
+
+    G.wheelAngle = target;
+    G.spinning = false;
+    G.currentSpin = G.wheelWords[resultIdx];
+    document.getElementById('sr-word').textContent = G.currentSpin;
+    document.getElementById('btn-spin').disabled = false;
+
+    G.spinHistory.unshift(G.currentSpin);
+    if (G.spinHistory.length > 6) G.spinHistory.pop();
+    renderSpinHist();
+    enableAnnBtns();
+  })(startTime);
+}
+
+function renderSpinHist() {
+  const el = document.getElementById('spin-hist');
+  const lbl = document.getElementById('hist-label');
+  const prev = G.spinHistory.slice(1);
+  lbl.style.display = prev.length ? 'block' : 'none';
+  el.innerHTML = prev.map(w => `<span>${w}</span>`).join('');
+}
+
+function disableAnnBtns() {
+  document.querySelectorAll('.ann-btn').forEach(b => b.disabled = true);
+}
+function enableAnnBtns() {
+  document.querySelectorAll('.ann-btn').forEach(b => b.disabled = false);
+}
+
+// ════════════════════════════════════════════════════════
+// PLAYERS PANEL
+// ════════════════════════════════════════════════════════
+function renderPlayers() {
+  const col = document.getElementById('players-col');
+  col.innerHTML = '';
+  const mid = Math.floor(G.gridSize / 2);
+
+  G.players.forEach((p, pi) => {
+    const card = document.createElement('div');
+    card.className = 'p-card';
+    card.id = `pc-${pi}`;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'p-card-hdr';
+    hdr.onclick = () => togglePCard(pi);
+    hdr.innerHTML = `
+      <span class="pname">${p.name}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="bingo-badge">BINGO!</span>
+        <button class="toggle-icon">▾</button>
+      </div>`;
+
+    const body = document.createElement('div');
+    body.className = 'p-card-body';
+    body.id = `pb-${pi}`;
+
+    const mg = document.createElement('div');
+    mg.className = 'mini-grid';
+    mg.style.gridTemplateColumns = `repeat(${G.gridSize}, 75px)`;
+
+    for (let r = 0; r < G.gridSize; r++) {
+      for (let c = 0; c < G.gridSize; c++) {
+        const isFree = G.gridSize % 2 === 1 && r === mid && c === mid;
+        const cell = document.createElement('div');
+        cell.className = 'm-cell' + (isFree ? ' free-c' : '') + (p.marked[r][c] ? ' marked' : '');
+        cell.textContent = isFree ? 'FREE' : (p.grid[r][c] || '');
+        mg.appendChild(cell);
+      }
+    }
+
+    const ab = document.createElement('button');
+    ab.className = 'ann-btn';
+    ab.textContent = `${p.name}: Announce Match!`;
+    ab.disabled = true;
+    ab.onclick = () => openAnnounce(pi);
+
+    body.appendChild(mg);
+    body.appendChild(ab);
+    card.appendChild(hdr);
+    card.appendChild(body);
+    col.appendChild(card);
+  });
+}
+
+function togglePCard(pi) {
+  const card = document.getElementById(`pc-${pi}`);
+  card.classList.toggle('open');
+}
+
+function refreshPCard(pi) {
+  const p = G.players[pi];
+  const card = document.getElementById(`pc-${pi}`);
+  if (!card) return;
+
+  if (p.hasBingo) card.classList.add('bingo');
+  const mid = Math.floor(G.gridSize / 2);
+  const cells = card.querySelectorAll('.m-cell');
+  let idx = 0;
+  for (let r = 0; r < G.gridSize; r++) {
+    for (let c = 0; c < G.gridSize; c++) {
+      const isFree = G.gridSize % 2 === 1 && r === mid && c === mid;
+      cells[idx].className = 'm-cell' + (isFree ? ' free-c' : '') + (p.marked[r][c] ? ' marked' : '');
+      idx++;
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// ANNOUNCE
+// ════════════════════════════════════════════════════════
+function openAnnounce(pi) {
+  if (!G.currentSpin) return;
+  G.annPlayerIdx = pi;
+  G.annCell = null;
+  const p = G.players[pi];
+  const mid = Math.floor(G.gridSize / 2);
+
+  document.getElementById('ann-char').textContent = `"${G.currentSpin}"`;
+  document.getElementById('btn-ann-confirm').disabled = true;
+
+  const list = document.getElementById('ann-list');
+  list.innerHTML = '';
+
+  for (let r = 0; r < G.gridSize; r++) {
+    for (let c = 0; c < G.gridSize; c++) {
+      const isFree = G.gridSize % 2 === 1 && r === mid && c === mid;
+      if (isFree || p.marked[r][c]) continue;
+      const name = p.grid[r][c];
+      if (!name) continue;
+
+      const item = document.createElement('div');
+      item.className = 'nsl-item';
+      item.textContent = name;
+      item.onclick = () => {
+        document.querySelectorAll('.nsl-item').forEach(i => i.classList.remove('sel'));
+        item.classList.add('sel');
+        G.annCell = {row: r, col: c, name};
+        document.getElementById('btn-ann-confirm').disabled = false;
+      };
+      list.appendChild(item);
+    }
+  }
+
+  if (!list.children.length) {
+    list.innerHTML = '<p style="color:#666;font-size:13px;text-align:center;padding:12px">All cells are already marked!</p>';
+    return;
+  }
+
+  document.getElementById('ann-overlay').classList.remove('hidden');
+}
+
+function annCancel() {
+  document.getElementById('ann-overlay').classList.add('hidden');
+  G.annPlayerIdx = null; G.annCell = null;
+}
+
+function annConfirm() {
+  if (!G.annCell) return;
+  document.getElementById('ann-overlay').classList.add('hidden');
+  openVote(G.annPlayerIdx, G.annCell);
+}
+
+// ════════════════════════════════════════════════════════
+// VOTE
+// ════════════════════════════════════════════════════════
+function openVote(pi, cell) {
+  G.vote = {
+    playerIdx: pi,
+    row: cell.row, col: cell.col, name: cell.name,
+    votes: Object.fromEntries(G.players.map((_, i) => [i, null])),
+    resolved: false,
+  };
+
+  document.getElementById('v-name').textContent = cell.name;
+  document.getElementById('v-char').textContent = `matches "${G.currentSpin}"?`;
+  document.getElementById('vote-res').className = 'vote-res hidden';
+  document.getElementById('vote-res').textContent = '';
+  document.getElementById('btn-close-vote').classList.add('hidden');
+
+  renderVoteList();
+  document.getElementById('vote-overlay').classList.remove('hidden');
+}
+
+function renderVoteList() {
+  const list = document.getElementById('vote-list');
+  list.innerHTML = '';
+  G.players.forEach((pl, i) => {
+    const v = G.vote.votes[i];
+    const item = document.createElement('div');
+    item.className = 'v-item';
+    item.innerHTML = `
+      <span class="vname">${pl.name}</span>
+      <div class="v-btns">
+        <button class="v-yes${v === true ? ' voted' : ''}" onclick="castVote(${i},true)" ${v !== null ? 'disabled' : ''}>✓ Yes</button>
+        <button class="v-no${v === false ? ' voted' : ''}" onclick="castVote(${i},false)" ${v !== null ? 'disabled' : ''}>✗ No</button>
+      </div>`;
+    list.appendChild(item);
+  });
+}
+
+function castVote(i, val) {
+  if (!G.vote || G.vote.resolved) return;
+  G.vote.votes[i] = val;
+  renderVoteList();
+  if (Object.values(G.vote.votes).every(v => v !== null)) resolveVote();
+}
+
+function resolveVote() {
+  G.vote.resolved = true;
+  const vals = Object.values(G.vote.votes);
+  const yes = vals.filter(v => v === true).length;
+  const no = vals.filter(v => v === false).length;
+  const pass = yes > no;
+
+  const res = document.getElementById('vote-res');
+  res.className = `vote-res ${pass ? 'pass' : 'fail'}`;
+  res.textContent = pass
+    ? `✓ Approved! (${yes} yes / ${no} no) — Cell marked!`
+    : `✗ Rejected (${yes} yes / ${no} no) — No mark.`;
+  res.classList.remove('hidden');
+
+  if (pass) {
+    const {playerIdx, row, col} = G.vote;
+    G.players[playerIdx].marked[row][col] = true;
+    refreshPCard(playerIdx);
+    checkBingo(playerIdx);
+  }
+
+  document.getElementById('btn-close-vote').classList.remove('hidden');
+}
+
+function closeVote() {
+  document.getElementById('vote-overlay').classList.add('hidden');
+  G.vote = null;
+}
+
+// ════════════════════════════════════════════════════════
+// BINGO CHECK
+// ════════════════════════════════════════════════════════
+function checkBingo(pi) {
+  const p = G.players[pi];
+  const n = G.gridSize;
+  const m = p.marked;
+
+  for (let r = 0; r < n; r++)
+    if (m[r].every(Boolean)) { winBingo(pi); return; }
+  for (let c = 0; c < n; c++)
+    if (m.every(row => row[c])) { winBingo(pi); return; }
+  if (m.every((row, i) => row[i])) { winBingo(pi); return; }
+  if (m.every((row, i) => row[n - 1 - i])) { winBingo(pi); return; }
+}
+
+function winBingo(pi) {
+  G.players[pi].hasBingo = true;
+  refreshPCard(pi);
+  document.getElementById('win-player').textContent = `${G.players[pi].name} wins! 🎉`;
+  document.getElementById('win-overlay').classList.remove('hidden');
+  document.getElementById('btn-spin').disabled = true;
+  disableAnnBtns();
+}
+
+// ════════════════════════════════════════════════════════
+// NEW GAME
+// ════════════════════════════════════════════════════════
+function newGameConfirm() {
+  if (confirm('Start a new game? All cards and progress will be reset.')) location.reload();
+}
+</script>
+</body>
+</html>
