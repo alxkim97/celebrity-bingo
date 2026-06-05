@@ -66,12 +66,38 @@ a{color:var(--accent)}
 
 /* welcome */
 #ph-welcome{width:100%;max-width:620px;margin:auto;padding:40px 20px;text-align:center;
-  display:flex;flex-direction:column;align-items:center;gap:20px}
-#ph-welcome h1{font-size:3rem;color:var(--accent);letter-spacing:-1px}
-.sub{color:var(--dim);font-size:1rem}
-.rules-card{background:var(--surface);border-radius:16px;padding:24px;text-align:left;width:100%;max-width:460px}
-.rules-card p{color:var(--muted);font-size:calc(var(--fs) - 1px);line-height:2.1}
+  display:flex;flex-direction:column;align-items:center;gap:20px;
+  position:relative;min-height:100vh;justify-content:center}
+#ph-welcome::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at 25% 40%,#a786df18 0%,transparent 55%),
+             radial-gradient(ellipse at 75% 25%,#ffd70012 0%,transparent 55%),
+             radial-gradient(ellipse at 55% 80%,#e6394612 0%,transparent 55%);
+  animation:bgPulse 6s ease-in-out infinite alternate}
+@keyframes bgPulse{0%{opacity:.7;transform:scale(1)}100%{opacity:1;transform:scale(1.05)}}
+#ph-welcome h1{font-size:3.5rem;letter-spacing:-1px;position:relative;z-index:1;
+  background:linear-gradient(135deg,#a786df 0%,#ffd700 45%,#ff6b9d 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:titleGlow 2.5s ease-in-out infinite alternate;
+  filter:drop-shadow(0 0 18px #a786df55)}
+@keyframes titleGlow{0%{filter:drop-shadow(0 0 8px #a786df44)}100%{filter:drop-shadow(0 0 28px #ffd70066)}}
+.sub{color:var(--muted);font-size:1rem;position:relative;z-index:1}
+.rules-card{background:linear-gradient(135deg,var(--surface),var(--surface2));
+  border:1px solid var(--accent);border-radius:16px;padding:24px;
+  text-align:left;width:100%;max-width:460px;position:relative;z-index:1;
+  box-shadow:0 0 30px #a786df18}
+.rules-card p{color:var(--muted);font-size:calc(var(--fs) - 1px);line-height:2.3}
 .rules-card b{color:var(--text)}
+/* floating bingo balls */
+.bball{position:absolute;border-radius:50%;font-weight:900;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:0;opacity:0;
+  animation:floatBall linear infinite;
+  box-shadow:0 2px 8px rgba(0,0,0,.35),inset 0 -3px 6px rgba(0,0,0,.25),inset 0 3px 6px rgba(255,255,255,.3)}
+@keyframes floatBall{
+  0%{transform:translateY(110vh) rotate(0deg);opacity:0}
+  8%{opacity:.75}
+  92%{opacity:.55}
+  100%{transform:translateY(-120px) rotate(540deg);opacity:0}}
 
 /* setup */
 #ph-setup{width:100%;max-width:940px;padding:28px 20px;display:flex;flex-direction:column;gap:0}
@@ -114,37 +140,37 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
   margin-top:20px;padding:0 0 4px;width:100%;max-width:940px}
 
 /* cards phase */
-#ph-cards{width:100%;max-width:720px;padding:32px 20px;display:flex;flex-direction:column;align-items:center;gap:18px}
-#ph-cards h2{font-size:1.6rem}
-.cards-top{display:grid;grid-template-columns:1fr auto;gap:20px;width:100%;align-items:start}
-.setup-status{display:flex;flex-direction:column;gap:7px;flex:1}
-.p-status{background:var(--surface);border:1px solid var(--border);border-radius:10px;
-  padding:11px 16px;display:flex;align-items:center;justify-content:space-between;font-size:var(--fs)}
-.p-status .pname{font-weight:700}
-.psbadge{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700}
+#ph-cards{width:100%;max-width:860px;padding:32px 20px;display:flex;flex-direction:column;align-items:center;gap:18px}
+#ph-cards h2{font-size:1.7rem}
+.cards-top{display:grid;grid-template-columns:1fr auto;gap:24px;width:100%;align-items:start}
+.setup-status{display:flex;flex-direction:column;gap:9px;flex:1}
+.p-status{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:15px 22px;display:flex;align-items:center;justify-content:space-between;font-size:calc(var(--fs) + 1px)}
+.p-status .pname{font-weight:700;font-size:1.05rem}
+.psbadge{padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap}
 .psbadge.pending{background:var(--border);color:var(--muted)}
 .psbadge.joined{background:#1e3a5c;color:#4cc9f0}
 .psbadge.done{background:var(--green);color:#fff}
 .psbadge.closed{background:#6b2737;color:#fff}
 
 /* QR / join panel */
-.join-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;
-  padding:18px;text-align:center;min-width:200px}
-.join-panel h3{font-size:13px;color:var(--muted);font-weight:700;text-transform:uppercase;
-  letter-spacing:.8px;margin-bottom:12px}
-#qr-img{border-radius:8px;display:block;margin:0 auto 10px}
-#join-url{font-size:12px;color:var(--accent);word-break:break-all;margin-bottom:6px}
-.join-hint{font-size:11px;color:var(--dim)}
+.join-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:22px;text-align:center;min-width:260px}
+.join-panel h3{font-size:14px;color:var(--muted);font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;margin-bottom:14px}
+#qr-img{border-radius:10px;display:block;margin:0 auto 12px;width:210px;height:210px}
+#join-url{font-size:13px;color:var(--accent);word-break:break-all;margin-bottom:6px}
+.join-hint{font-size:12px;color:var(--dim)}
 .cards-actions{display:flex;gap:10px;margin-top:4px}
 
 /* game phase */
 #ph-game{width:100%;max-width:1060px;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
 .game-header{display:flex;align-items:center;justify-content:space-between}
 .game-header h2{font-size:1.3rem;color:var(--accent)}
-.game-layout{display:grid;grid-template-columns:430px 1fr;gap:18px;align-items:start}
+.game-layout{display:grid;grid-template-columns:calc(var(--wheel-size,480px) + 14px) 1fr;gap:18px;align-items:start}
 .wheel-col{display:flex;flex-direction:column;align-items:center;gap:12px}
-.wheel-wrap{position:relative;width:420px;height:420px;flex-shrink:0}
-#wheel-canvas{display:block}
+.wheel-wrap{position:relative;width:var(--wheel-size,480px);height:var(--wheel-size,480px);flex-shrink:0}
+#wheel-canvas{display:block;width:100%;height:100%}
 .ptr{position:absolute;right:-10px;top:50%;transform:translateY(-50%);width:0;height:0;
   border-top:15px solid transparent;border-bottom:15px solid transparent;
   border-right:30px solid var(--gold);filter:drop-shadow(0 0 7px #ffd70099)}
@@ -183,6 +209,30 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
 #game-log{font-size:11px;color:var(--dim);display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
 .log-entry{padding:4px 0;border-bottom:1px solid var(--surface)}
 .log-entry.pass{color:#52b788}.log-entry.fail{color:var(--red)}.log-entry.spin{color:var(--accent)}
+/* inline cards panel */
+.cards-inline-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.cards-inline-hdr{display:flex;justify-content:space-between;align-items:center;
+  padding:10px 14px;cursor:pointer;user-select:none;transition:background .15s}
+.cards-inline-hdr:hover{background:var(--surface2)}
+.cards-inline-hdr h3{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin:0}
+#cards-panel-body{padding:8px 10px}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.player-card-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px}
+.player-card-wrap.bingo{border-color:var(--gold);box-shadow:0 0 10px #ffd70044}
+.player-card-name{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;text-align:center}
+.mini-card{display:grid;gap:2px}
+.mc2{border:1px solid var(--border);border-radius:5px;overflow:hidden;
+  background:var(--surface2);color:var(--text);min-height:56px;
+  position:relative;display:flex;align-items:center;justify-content:center}
+.mc2.free{background:var(--accent)22;border-color:var(--accent);color:var(--accent);font-size:11px;font-weight:700}
+.mc2.marked::after{content:'✕';position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:26px;font-weight:900;color:var(--red);
+  background:#e6394650;border-radius:5px;z-index:3}
+.mc2-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 15%;z-index:1}
+.mc2-label{position:absolute;bottom:0;left:0;right:0;z-index:2;padding:12px 2px 3px;
+  font-size:7.5px;font-weight:600;text-align:center;line-height:1.2;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:var(--text)}
+.mc2.has-img .mc2-label{background:linear-gradient(transparent,rgba(0,0,0,.8));color:#fff}
 </style>
 </head>
 <body>
@@ -204,6 +254,12 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
     <div class="font-row"><span style="font-size:10px">A</span>
       <input type="range" min="11" max="20" value="14" id="font-size-range" oninput="applyFont()">
       <span style="font-size:18px">A</span></div>
+  </div>
+  <div class="drawer-section">
+    <label>Wheel Size — <span id="wheel-size-val">480px</span></label>
+    <div class="font-row"><span style="font-size:10px">🎡</span>
+      <input type="range" min="300" max="580" value="480" id="wheel-size-range" oninput="applyWheelSize(this.value)">
+      <span style="font-size:18px">🎡</span></div>
   </div>
   <div class="drawer-section">
     <label data-i18n="label-lang">Language</label>
@@ -244,6 +300,7 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
 
 <!-- WELCOME -->
 <div id="ph-welcome">
+  <!-- floating bingo balls injected by JS -->
   <h1 data-i18n="app-title">Celebrity Bingo</h1>
   <p class="sub" data-i18n="welcome-sub">Spin the wheel · Match the trait · Mark your card · BINGO!</p>
   <div class="rules-card">
@@ -253,7 +310,13 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
        🗳️ Everyone <b>votes</b> to confirm — majority wins<br>
        🏆 First to complete a line <b>wins!</b></p>
   </div>
-  <button class="btn-p" onclick="showSetup()" data-i18n="btn-host-setup">Host Setup →</button>
+  <button class="btn-p" onclick="showSetup()" data-i18n="btn-host-setup"
+    style="position:relative;z-index:1;background:linear-gradient(135deg,var(--accent),var(--accent2));
+           font-size:1.05rem;padding:14px 38px;box-shadow:0 4px 20px #a786df44;letter-spacing:.3px">
+    Host Setup →</button>
+  <p style="position:relative;z-index:1;margin-top:22px;font-size:11px;color:var(--dim)">
+    Created by Alex Kim &nbsp;·&nbsp; v1.5
+  </p>
 </div>
 
 <!-- SETUP -->
@@ -269,7 +332,9 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
     <div class="pool-actions">
       <button class="btn-s" onclick="wwSelectAll()" data-i18n="btn-select-all">✓ Select All</button>
       <button class="btn-s" onclick="wwClearAll()" data-i18n="btn-clear-all">✗ Clear All</button>
-      <button class="btn-s" onclick="wwRandom()" title="Randomly pick 20 words">🎲 Random 20</button>
+      <input type="number" id="ww-rand-n" value="20" min="1" max="99"
+        style="width:50px;text-align:center;padding:5px 6px;flex:none">
+      <button class="btn-s" onclick="wwRandom(+document.getElementById('ww-rand-n').value||20)">🎲 Random</button>
     </div>
     <div class="input-row">
       <input id="ww-in" placeholder="Add a custom characteristic…" onkeydown="if(event.key==='Enter')addWWCustom()">
@@ -283,7 +348,9 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
     <div class="pool-actions">
       <button class="btn-s" onclick="nmSelectAll()" data-i18n="btn-select-all">✓ Select All</button>
       <button class="btn-s" onclick="nmClearAll()" data-i18n="btn-clear-all">✗ Clear All</button>
-      <button class="btn-s" onclick="nmRandom()" title="Randomly pick 30 names">🎲 Random 30</button>
+      <input type="number" id="nm-rand-n" value="30" min="1" max="99"
+        style="width:50px;text-align:center;padding:5px 6px;flex:none">
+      <button class="btn-s" onclick="nmRandom(+document.getElementById('nm-rand-n').value||30)">🎲 Random</button>
     </div>
     <div class="input-row">
       <input id="nm-in" placeholder="Add a custom name…" onkeydown="if(event.key==='Enter')addNMCustom()">
@@ -352,7 +419,7 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
     </div>
   </div>
   <div class="cards-actions">
-    <button class="btn-s" onclick="if(confirm('Go back?')){socket.emit('host-new-game');location.reload()}">← Back</button>
+    <button class="btn-s" onclick="goBackToSetup()">← Back</button>
     <button class="btn-p" id="btn-start-game" onclick="hostStartGame()" disabled>Start Game →</button>
   </div>
 </div>
@@ -360,7 +427,7 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
 <!-- GAME PHASE -->
 <div id="ph-game" class="hidden">
   <div class="game-header">
-    <h2>Celebrity Bingo</h2>
+    <h2>Celebrity Bingo <small style="font-size:.6rem;color:var(--muted);font-weight:400">v1.5</small></h2>
     <button class="btn-d" onclick="if(confirm('New game?')){socket.emit('host-new-game');location.reload()}">↺ New Game</button>
   </div>
   <div class="game-layout">
@@ -393,6 +460,15 @@ input[type=checkbox]{width:auto;accent-color:var(--accent)}
       <div class="players-panel">
         <h3>Players</h3>
         <div id="game-player-list"></div>
+      </div>
+      <div class="cards-inline-panel" id="cards-inline-panel">
+        <div class="cards-inline-hdr" onclick="toggleCards()">
+          <h3>📋 Player Cards</h3>
+          <span id="cards-toggle-icon" style="font-size:11px;color:var(--dim)">▼ expand</span>
+        </div>
+        <div id="cards-panel-body" class="hidden">
+          <div class="cards-grid" id="cards-grid"></div>
+        </div>
       </div>
       <div class="log-panel">
         <h3>Game Log</h3>

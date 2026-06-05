@@ -27,8 +27,14 @@ function setLang(lang, save=true) {
   });
   const btn = document.getElementById('lang-btn');
   if (btn) btn.textContent = lang === 'en' ? '🇹🇭 ภาษาไทย' : '🇬🇧 English';
+  if (document.getElementById('ww-grid')) renderWWPool();
+  if (document.getElementById('nm-grid')) renderNMPool();
+  if (currentWheelWords && currentWheelWords.length && !S.spinning) drawWheel(currentWheelWords, S.wheelAngle);
+  const srEl = document.getElementById('sr-word');
+  if (srEl && S.currentSpin) srEl.textContent = wwTranslate(S.currentSpin);
 }
 function toggleLang() { setLang(currentLang === 'en' ? 'th' : 'en'); }
+const wwTranslate = w => (currentLang === 'th' && window.WW_TH?.[w]) || w;
 
 // ── photos setting ─────────────────────────────────────
 let showPhotos = true;
@@ -45,6 +51,7 @@ function resetSettings() {
   localStorage.removeItem('cb-font-size');
   localStorage.removeItem('cb-lang');
   localStorage.removeItem('cb-photos');
+  localStorage.removeItem('cb-wheel-size');
   applyTheme('dark-purple');
   applyFontDirect('Segoe UI', 14);
   setLang('en');
@@ -52,6 +59,8 @@ function resetSettings() {
   document.getElementById('font-family-sel').value = 'Segoe UI';
   document.getElementById('font-size-range').value = '14';
   document.getElementById('fs-val').textContent = '14px';
+  document.getElementById('wheel-size-range').value = '480';
+  applyWheelSize(480, false);
 }
 
 function loadSettings() {
@@ -64,6 +73,9 @@ function loadSettings() {
   document.getElementById('fs-val').textContent = sz + 'px';
   setLang(localStorage.getItem('cb-lang') || 'en', false);
   setPhotos(localStorage.getItem('cb-photos') !== '0', false);
+  const wSz = parseInt(localStorage.getItem('cb-wheel-size') || '480');
+  applyWheelSize(wSz, false);
+  document.getElementById('wheel-size-range').value = wSz;
 }
 function applyTheme(name, save=true) {
   const t = THEMES[name]; if (!t) return;
@@ -111,6 +123,17 @@ const WW_PRESETS = [
   'From the 1900s','From the 2000s','Married','Single','Animal','Robot or AI','Alien',
   'Speaks multiple languages','Has red hair','Person of color','From a franchise',
   'Won a Grammy','Has been to space',
+  // funny / convoluted
+  'Has been arrested','Has won an Oscar','Is a meme','Has a biopic',
+  'Has a nemesis','Probably owns a yacht','Has a fragrance line',
+  'Has been in a video game','Born before the internet','Could beat Goku',
+  'Would be a terrible roommate','Wikipedia has a Controversy section',
+  'Knows martial arts','Has broken a world record','Has merchandise',
+  'Been cancelled online','Has a catchphrase','Would survive the apocalypse',
+  'Speaks only one language','Has a statue','Might be immortal',
+  'Never won a major award','Is probably a spy','Would join reality TV',
+  'Has a secret lair','Canonically stronger than your dad',
+  'Would be sorted into Slytherin',
 ];
 const NM_PRESETS = [
   {n:'Elon Musk',w:'https://en.wikipedia.org/wiki/Elon_Musk'},
@@ -158,6 +181,107 @@ const NM_PRESETS = [
   {n:'Black Panther',w:'https://en.wikipedia.org/wiki/Black_Panther_(character)'},
   {n:'Frodo Baggins',w:'https://en.wikipedia.org/wiki/Frodo_Baggins'},
   {n:'Daenerys Targaryen',w:'https://en.wikipedia.org/wiki/Daenerys_Targaryen'},
+  // Real celebrities — fan favourites & funny matches
+  {n:'The Rock',w:'https://en.wikipedia.org/wiki/Dwayne_Johnson'},
+  {n:'Nicolas Cage',w:'https://en.wikipedia.org/wiki/Nicolas_Cage'},
+  {n:'Keanu Reeves',w:'https://en.wikipedia.org/wiki/Keanu_Reeves'},
+  {n:'Morgan Freeman',w:'https://en.wikipedia.org/wiki/Morgan_Freeman'},
+  {n:'Jeff Goldblum',w:'https://en.wikipedia.org/wiki/Jeff_Goldblum'},
+  {n:'Chuck Norris',w:'https://en.wikipedia.org/wiki/Chuck_Norris'},
+  {n:'Arnold Schwarzenegger',w:'https://en.wikipedia.org/wiki/Arnold_Schwarzenegger'},
+  {n:'Tom Hanks',w:'https://en.wikipedia.org/wiki/Tom_Hanks'},
+  {n:'Angelina Jolie',w:'https://en.wikipedia.org/wiki/Angelina_Jolie'},
+  {n:'Will Smith',w:'https://en.wikipedia.org/wiki/Will_Smith'},
+  {n:'Johnny Depp',w:'https://en.wikipedia.org/wiki/Johnny_Depp'},
+  {n:'Eminem',w:'https://en.wikipedia.org/wiki/Eminem'},
+  {n:'Kanye West',w:'https://en.wikipedia.org/wiki/Kanye_West'},
+  {n:'Lady Gaga',w:'https://en.wikipedia.org/wiki/Lady_Gaga'},
+  {n:'Drake',w:'https://en.wikipedia.org/wiki/Drake_(musician)'},
+  {n:'Nicki Minaj',w:'https://en.wikipedia.org/wiki/Nicki_Minaj'},
+  {n:'Michael Jordan',w:'https://en.wikipedia.org/wiki/Michael_Jordan'},
+  {n:'Kobe Bryant',w:'https://en.wikipedia.org/wiki/Kobe_Bryant'},
+  {n:'Muhammad Ali',w:'https://en.wikipedia.org/wiki/Muhammad_Ali'},
+  {n:'Usain Bolt',w:'https://en.wikipedia.org/wiki/Usain_Bolt'},
+  {n:'Roger Federer',w:'https://en.wikipedia.org/wiki/Roger_Federer'},
+  {n:'Bruce Lee',w:'https://en.wikipedia.org/wiki/Bruce_Lee'},
+  {n:'Jackie Chan',w:'https://en.wikipedia.org/wiki/Jackie_Chan'},
+  {n:'Sylvester Stallone',w:'https://en.wikipedia.org/wiki/Sylvester_Stallone'},
+  {n:'Ryan Reynolds',w:'https://en.wikipedia.org/wiki/Ryan_Reynolds'},
+  {n:'Dua Lipa',w:'https://en.wikipedia.org/wiki/Dua_Lipa'},
+  {n:'Bad Bunny',w:'https://en.wikipedia.org/wiki/Bad_Bunny'},
+  {n:'BTS (group)',w:'https://en.wikipedia.org/wiki/BTS'},
+  // Historical — funny matches
+  {n:'Julius Caesar',w:'https://en.wikipedia.org/wiki/Julius_Caesar'},
+  {n:'Genghis Khan',w:'https://en.wikipedia.org/wiki/Genghis_Khan'},
+  {n:'King Henry VIII',w:'https://en.wikipedia.org/wiki/Henry_VIII'},
+  {n:'Alexander the Great',w:'https://en.wikipedia.org/wiki/Alexander_the_Great'},
+  {n:'Vlad the Impaler',w:'https://en.wikipedia.org/wiki/Vlad_the_Impaler'},
+  {n:'Nikola Tesla',w:'https://en.wikipedia.org/wiki/Nikola_Tesla'},
+  // Fictional icons
+  {n:'Shrek',w:'https://en.wikipedia.org/wiki/Shrek_(character)'},
+  {n:'SpongeBob',w:'https://en.wikipedia.org/wiki/SpongeBob_SquarePants_(character)'},
+  {n:'Homer Simpson',w:'https://en.wikipedia.org/wiki/Homer_Simpson'},
+  {n:'Bart Simpson',w:'https://en.wikipedia.org/wiki/Bart_Simpson'},
+  {n:'Walter White',w:'https://en.wikipedia.org/wiki/Walter_White_(Breaking_Bad)'},
+  {n:'Pennywise',w:'https://en.wikipedia.org/wiki/Pennywise_(character)'},
+  {n:'Hannibal Lecter',w:'https://en.wikipedia.org/wiki/Hannibal_Lecter'},
+  {n:'Rick Sanchez',w:'https://en.wikipedia.org/wiki/Rick_and_Morty'},
+  {n:'Patrick Star',w:'https://en.wikipedia.org/wiki/Patrick_Star'},
+  {n:'Gollum',w:'https://en.wikipedia.org/wiki/Gollum'},
+  // Anime heroes
+  {n:'Naruto Uzumaki',w:'https://en.wikipedia.org/wiki/Naruto_Uzumaki'},
+  {n:'Monkey D. Luffy',w:'https://en.wikipedia.org/wiki/Monkey_D._Luffy'},
+  {n:'Roronoa Zoro',w:'https://en.wikipedia.org/wiki/Roronoa_Zoro'},
+  {n:'Vegeta',w:'https://en.wikipedia.org/wiki/Vegeta_(Dragon_Ball)'},
+  {n:'Sasuke Uchiha',w:'https://en.wikipedia.org/wiki/Sasuke_Uchiha'},
+  {n:'Itachi Uchiha',w:'https://en.wikipedia.org/wiki/Itachi_Uchiha'},
+  {n:'Saitama',w:'https://en.wikipedia.org/wiki/Saitama_(One-Punch_Man)'},
+  {n:'Levi Ackerman',w:'https://en.wikipedia.org/wiki/Levi_Ackerman'},
+  {n:'Tanjiro Kamado',w:'https://en.wikipedia.org/wiki/Tanjiro_Kamado'},
+  {n:'Nezuko Kamado',w:'https://en.wikipedia.org/wiki/Nezuko_Kamado'},
+  {n:'Light Yagami',w:'https://en.wikipedia.org/wiki/Light_Yagami'},
+  {n:'L Lawliet',w:'https://en.wikipedia.org/wiki/L_(Death_Note)'},
+  {n:'All Might',w:'https://en.wikipedia.org/wiki/List_of_My_Hero_Academia_characters'},
+  {n:'Izuku Midoriya',w:'https://en.wikipedia.org/wiki/Izuku_Midoriya'},
+  {n:'Edward Elric',w:'https://en.wikipedia.org/wiki/Edward_Elric'},
+  {n:'Natsu Dragneel',w:'https://en.wikipedia.org/wiki/Natsu_Dragneel'},
+  {n:'Ichigo Kurosaki',w:'https://en.wikipedia.org/wiki/Ichigo_Kurosaki'},
+  // Movie / TV heroes
+  {n:'Captain America',w:'https://en.wikipedia.org/wiki/Captain_America'},
+  {n:'Thor',w:'https://en.wikipedia.org/wiki/Thor_(Marvel_Comics)'},
+  {n:'Thanos',w:'https://en.wikipedia.org/wiki/Thanos'},
+  {n:'Loki',w:'https://en.wikipedia.org/wiki/Loki_(Marvel_Comics)'},
+  {n:'Doctor Strange',w:'https://en.wikipedia.org/wiki/Doctor_Strange'},
+  {n:'Deadpool',w:'https://en.wikipedia.org/wiki/Deadpool'},
+  {n:'Wolverine',w:'https://en.wikipedia.org/wiki/Wolverine_(character)'},
+  {n:'Superman',w:'https://en.wikipedia.org/wiki/Superman'},
+  {n:'The Flash',w:'https://en.wikipedia.org/wiki/Flash_(DC_Comics)'},
+  {n:'Aquaman',w:'https://en.wikipedia.org/wiki/Aquaman'},
+  {n:'Joker',w:'https://en.wikipedia.org/wiki/Joker_(character)'},
+  {n:'Lord Voldemort',w:'https://en.wikipedia.org/wiki/Lord_Voldemort'},
+  {n:'Katniss Everdeen',w:'https://en.wikipedia.org/wiki/Katniss_Everdeen'},
+  {n:'Jack Sparrow',w:'https://en.wikipedia.org/wiki/Jack_Sparrow'},
+  {n:'James Bond',w:'https://en.wikipedia.org/wiki/James_Bond'},
+  {n:'John Wick',w:'https://en.wikipedia.org/wiki/John_Wick_(character)'},
+  // Thai stars
+  {n:'Lisa (BLACKPINK)',w:'https://en.wikipedia.org/wiki/Lisa_(rapper)',th:'ลิซ่า (BLACKPINK)'},
+  {n:'Bright Vachirawit',w:'https://en.wikipedia.org/wiki/Bright_Vachirawit',th:'ไบรท์ วชิรวิชญ์'},
+  {n:'Gulf Kanawut',w:'https://en.wikipedia.org/wiki/Gulf_Kanawut',th:'กัลฟ์ กาณวุฒิ'},
+  {n:'Mew Suppasit',w:'https://en.wikipedia.org/wiki/Mew_Suppasit',th:'มิว ศุภศิษฏ์'},
+  {n:'Mario Maurer',w:'https://en.wikipedia.org/wiki/Mario_Maurer',th:'มาริโอ้ เมาเรอร์'},
+  {n:'Nadech Kugimiya',w:'https://en.wikipedia.org/wiki/Nadech_Kugimiya',th:'ณเดชน์ คูกิมิยะ'},
+  {n:'Davika Hoorne',w:'https://en.wikipedia.org/wiki/Davika_Hoorne',th:'ดาวิกา โฮร์เน่'},
+  {n:'Jeff Satur',w:'https://en.wikipedia.org/wiki/Jeff_Satur',th:'เจฟ สาทร'},
+  {n:'Billkin Putthipong',w:'https://en.wikipedia.org/wiki/Billkin_Putthipong',th:'บิลล์กิ้น พุทธิพงศ์'},
+  {n:'Win Metawin',w:'https://en.wikipedia.org/wiki/Win_Metawin',th:'วิน เมธวิน'},
+  {n:'Apo Nattawin',w:'https://en.wikipedia.org/wiki/Apo_Nattawin',th:'อาโป้ ณัฐวิญญ์'},
+  // Controversial politicians
+  {n:'Donald Trump',w:'https://en.wikipedia.org/wiki/Donald_Trump',th:'โดนัลด์ ทรัมป์'},
+  {n:'Vladimir Putin',w:'https://en.wikipedia.org/wiki/Vladimir_Putin',th:'วลาดิมีร์ ปูติน'},
+  {n:'Kim Jong-un',w:'https://en.wikipedia.org/wiki/Kim_Jong-un',th:'คิม จอง-อึน'},
+  {n:'Thaksin Shinawatra',w:'https://en.wikipedia.org/wiki/Thaksin_Shinawatra',th:'ทักษิณ ชินวัตร'},
+  {n:'Xi Jinping',w:'https://en.wikipedia.org/wiki/Xi_Jinping',th:'สี จิ้นผิง'},
+  {n:'Boris Johnson',w:'https://en.wikipedia.org/wiki/Boris_Johnson',th:'บอริส จอห์นสัน'},
 ];
 const COLORS = ['#e63946','#457b9d','#2d6a4f','#e9c46a','#9d4edd','#f4a261','#2a9d8f','#e76f51',
   '#6d6875','#b5e48c','#f77f00','#4cc9f0','#c77dff','#80b918','#ff6b6b','#48cae4',
@@ -170,7 +294,8 @@ let nmPool = NM_PRESETS.map(p => ({text:p.n, isPreset:true, active:false, wiki:p
 // STATE
 // ════════════════════════════════════════════════════════
 const S = { gridSize:4, numPlayers:4, playerNames:[], freeCenter:true, namesRepeat:true,
-  phase:'welcome', playersDone:new Set(), voteState:null, wheelAngle:0, spinning:false };
+  phase:'welcome', playersDone:new Set(), voteState:null, wheelAngle:0, spinning:false,
+  currentSpin:null };
 let playerNamesAll = [];
 let socket;
 
@@ -182,7 +307,11 @@ function renderWWPool() {
   wwPool.forEach((item,i) => {
     const c = document.createElement('button'); c.className='pc'+(item.active?' on':'');
     c.onclick = () => { item.active=!item.active; renderWWPool(); };
-    c.appendChild(Object.assign(document.createElement('span'),{textContent:item.text}));
+    const label = wwTranslate(item.text);
+    const inner = label !== item.text
+      ? `<span>${label}</span><span style="font-size:9px;opacity:.55;display:block;line-height:1">${item.text}</span>`
+      : `<span>${label}</span>`;
+    c.insertAdjacentHTML('beforeend', inner);
     if (!item.isPreset) {
       const rm = document.createElement('button'); rm.className='pcrm'; rm.textContent='✕';
       rm.onclick = e => { e.stopPropagation(); wwPool.splice(i,1); renderWWPool(); };
@@ -198,7 +327,11 @@ function renderNMPool() {
   nmPool.forEach((item,i) => {
     const c = document.createElement('button'); c.className='pc'+(item.active?' on':'');
     c.onclick = () => { item.active=!item.active; renderNMPool(); };
-    c.appendChild(Object.assign(document.createElement('span'),{textContent:item.text}));
+    const showTh = currentLang === 'th' && item.th;
+    const inner = showTh
+      ? `<span>${item.th}</span><span style="font-size:9px;opacity:.55;display:block;line-height:1">${item.text}</span>`
+      : `<span>${item.text}</span>`;
+    c.insertAdjacentHTML('beforeend', inner);
     if (item.wiki) {
       const wl = document.createElement('button'); wl.className='pcwiki'; wl.textContent='🔗';
       wl.onclick = e => { e.stopPropagation(); openWiki(item.wiki); }; c.appendChild(wl);
@@ -315,6 +448,8 @@ function wwRandom(n = 20) {
   const indices = shuffle([...Array(wwPool.length).keys()]);
   indices.slice(0, Math.min(n, wwPool.length)).forEach(i => wwPool[i].active = true);
   renderWWPool();
+  const wrap = document.querySelector('#p-ww .pool-wrap');
+  if (wrap) { wrap.scrollTop = 0; wrap.style.outline = '2px solid var(--accent)'; setTimeout(() => { wrap.style.outline = ''; }, 500); }
 }
 
 function nmRandom(n = 30) {
@@ -322,6 +457,8 @@ function nmRandom(n = 30) {
   const indices = shuffle([...Array(nmPool.length).keys()]);
   indices.slice(0, Math.min(n, nmPool.length)).forEach(i => nmPool[i].active = true);
   renderNMPool();
+  const wrap = document.querySelector('#p-nm .pool-wrap');
+  if (wrap) { wrap.scrollTop = 0; wrap.style.outline = '2px solid var(--accent)'; setTimeout(() => { wrap.style.outline = ''; }, 500); }
 }
 
 // ════════════════════════════════════════════════════════
@@ -470,8 +607,9 @@ function setupSocket() {
   });
 
   socket.on('spin-reveal', ({word, history}) => {
+    S.currentSpin = word;
     const el=document.getElementById('sr-word');
-    el.textContent=word; el.classList.remove('revealed');
+    el.textContent=wwTranslate(word); el.classList.remove('revealed');
     void el.offsetWidth; el.classList.add('revealed');
     playRevealSound();
     const histEl=document.getElementById('hist'), lbl=document.getElementById('hist-lbl');
@@ -498,13 +636,34 @@ function setupSocket() {
       `<b>${voted}</b> / ${total} voted &nbsp;·&nbsp; ✓ <b style="color:#52b788">${yes}</b> &nbsp; ✗ <b style="color:var(--red)">${no}</b>`;
   });
 
+  socket.on('vote-cancelled', () => {
+    S.voteState = null;
+    document.getElementById('vote-panel').classList.add('hidden');
+    addLog('↩ Vote cancelled by announcer', 'spin');
+    document.getElementById('btn-spin').disabled = false;
+  });
+
   socket.on('vote-result', ({pass,yes,no,playerIdx}) => {
     const pname=playerNamesAll[playerIdx]||`Player ${playerIdx+1}`;
     const vname=S.voteState?S.voteState.cellName:'?';
+    const usedChar=S.voteState?.characteristic;
     addLog(pass ? t('tpl-approved-log', pname, vname, yes, no)
                : t('tpl-rejected-log', pname, vname, yes, no), pass?'pass':'fail');
     S.voteState=null;
     document.getElementById('vote-panel').classList.add('hidden');
+    // remove used characteristic from wheel so it can't be spun again
+    if (pass && usedChar) {
+      wwPool.forEach(item => { if (item.text === usedChar) item.active = false; });
+      currentWheelWords = wwPool.filter(i=>i.active).map(i=>i.text);
+      drawWheel(currentWheelWords, S.wheelAngle);
+      addLog(`🚫 "${wwTranslate(usedChar)}" removed from wheel`, 'spin');
+    }
+    // auto-refresh cards panel if expanded
+    if (cardsExpanded) socket.emit('host-request-cards');
+  });
+
+  socket.on('cards-data', ({players, gridSize, wikiMap}) => {
+    renderCards(players, gridSize, wikiMap);
   });
 
   socket.on('game-won', ({winnerName}) => {
@@ -514,12 +673,100 @@ function setupSocket() {
 }
 
 // ════════════════════════════════════════════════════════
+// CARDS VIEWER
+// ════════════════════════════════════════════════════════
+const hostImgCache = {};
+async function hostFetchThumb(name, wikiUrl) {
+  if (name in hostImgCache) return hostImgCache[name];
+  hostImgCache[name] = null;
+  try {
+    const title = wikiUrl ? wikiUrl.split('/wiki/')[1] : encodeURIComponent(name.replace(/ /g,'_'));
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${title}`);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    hostImgCache[name] = data.thumbnail?.source || null;
+  } catch { hostImgCache[name] = null; }
+  return hostImgCache[name];
+}
+
+let cardsExpanded = false;
+function toggleCards() {
+  cardsExpanded = !cardsExpanded;
+  const body = document.getElementById('cards-panel-body');
+  const icon = document.getElementById('cards-toggle-icon');
+  body.classList.toggle('hidden', !cardsExpanded);
+  icon.textContent = cardsExpanded ? '▲ collapse' : '▼ expand';
+  if (cardsExpanded) socket.emit('host-request-cards');
+}
+function renderCards(players, gridSize, wikiMap) {
+  const grid = document.getElementById('cards-grid');
+  grid.innerHTML = '';
+  const cellPx = Math.max(52, Math.round(600 / (players.length * gridSize + 1)));
+  const cardW = Math.max(180, gridSize * cellPx + 16);
+  grid.style.gridTemplateColumns = `repeat(auto-fill,minmax(${cardW}px,1fr))`;
+  players.forEach(p => {
+    const wrap = document.createElement('div');
+    wrap.className = 'player-card-wrap' + (p.hasBingo ? ' bingo' : '');
+    const nameEl = document.createElement('div');
+    nameEl.className = 'player-card-name';
+    nameEl.textContent = (p.hasBingo ? '🏆 ' : '') + p.name;
+    wrap.appendChild(nameEl);
+    const miniGrid = document.createElement('div');
+    miniGrid.className = 'mini-card';
+    miniGrid.style.gridTemplateColumns = `repeat(${gridSize},1fr)`;
+    const fetchQueue = [];
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        const cell = document.createElement('div');
+        const name = p.grid[r][c];
+        const isFree = name === 'FREE';
+        const isMarked = p.marked[r][c];
+        cell.className = 'mc2' + (isFree ? ' free' : '') + (isMarked ? ' marked' : '');
+        cell.style.height = cellPx * 1.3 + 'px';
+        if (isFree) {
+          cell.textContent = '★';
+        } else if (name) {
+          cell.title = name;
+          const label = document.createElement('div');
+          label.className = 'mc2-label';
+          label.textContent = name;
+          cell.appendChild(label);
+          fetchQueue.push({ name, cell, wikiUrl: wikiMap[name] || null });
+        }
+        miniGrid.appendChild(cell);
+      }
+    }
+    wrap.appendChild(miniGrid);
+    grid.appendChild(wrap);
+    fetchQueue.forEach(({ name, cell, wikiUrl }) => {
+      hostFetchThumb(name, wikiUrl).then(src => {
+        if (!src) return;
+        const img = document.createElement('img');
+        img.className = 'mc2-img'; img.src = src; img.alt = name;
+        img.onerror = () => img.remove();
+        cell.insertBefore(img, cell.firstChild);
+        cell.classList.add('has-img');
+      });
+    });
+  });
+}
+
+function goBackToSetup() {
+  socket.emit('host-back-to-setup');
+  show('ph-setup');
+  renderWWPool(); renderNMPool(); renderPNames();
+}
+
+// ════════════════════════════════════════════════════════
 // GAME
 // ════════════════════════════════════════════════════════
 let currentWheelWords = [];
 
 function startGame() {
   show('ph-game'); S.spinning=false; S.wheelAngle=0;
+  const wSz = parseInt(localStorage.getItem('cb-wheel-size') || '480');
+  const cv = document.getElementById('wheel-canvas');
+  if (cv) { cv.width = wSz; cv.height = wSz; }
   currentWheelWords = wwPool.filter(i=>i.active).map(i=>i.text);
   playerNamesAll = [...S.playerNames];
   // Build player list
@@ -533,9 +780,20 @@ function startGame() {
   drawWheel(currentWheelWords,0);
 }
 
+function applyWheelSize(size, save=true) {
+  const sz = Math.max(300, Math.min(580, parseInt(size)));
+  document.documentElement.style.setProperty('--wheel-size', sz + 'px');
+  const canvas = document.getElementById('wheel-canvas');
+  if (canvas) { canvas.width = sz; canvas.height = sz; }
+  const valEl = document.getElementById('wheel-size-val');
+  if (valEl) valEl.textContent = sz + 'px';
+  if (save) localStorage.setItem('cb-wheel-size', sz);
+  if (currentWheelWords.length && !S.spinning) drawWheel(currentWheelWords, S.wheelAngle);
+}
+
 function drawWheel(words,angle) {
   const canvas=document.getElementById('wheel-canvas'); if(!canvas) return;
-  const ctx=canvas.getContext('2d'), SIZE=420, cx=SIZE/2, cy=SIZE/2, r=cx-4, n=words.length;
+  const SIZE=canvas.width||480, ctx=canvas.getContext('2d'), cx=SIZE/2, cy=SIZE/2, r=cx-4, n=words.length;
   ctx.clearRect(0,0,SIZE,SIZE);
   if(!n){ctx.fillStyle='var(--surface)';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();return;}
   const sa=(2*Math.PI)/n;
@@ -549,7 +807,8 @@ function drawWheel(words,angle) {
       ctx.save();ctx.translate(cx,cy);ctx.rotate(mid);ctx.textAlign='right';
       ctx.fillStyle='#ffffffdd';ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=3;
       const maxC=n>25?10:n>15?13:16;
-      const lbl=words[i].length>maxC?words[i].slice(0,maxC)+'…':words[i];
+      const disp=wwTranslate(words[i]);
+      const lbl=disp.length>maxC?disp.slice(0,maxC)+'…':disp;
       const fs=n>30?8:n>20?9:n>10?11:13;
       ctx.font=`bold ${fs}px Segoe UI`;ctx.fillText(lbl,r-8,4);ctx.restore();
     }
@@ -612,10 +871,40 @@ function playRevealSound() {
 }
 
 // ════════════════════════════════════════════════════════
+// WELCOME PAGE ANIMATIONS
+// ════════════════════════════════════════════════════════
+function spawnBalls() {
+  const container = document.getElementById('ph-welcome');
+  if (!container) return;
+  const defs = [
+    {l:'5%', sz:42, bg:'#e63946', dur:'6.5s', delay:'0s',   letter:'B'},
+    {l:'14%',sz:30, bg:'#f4a261', dur:'8.2s', delay:'1.8s', letter:'I'},
+    {l:'27%',sz:52, bg:'#2a9d8f', dur:'7.1s', delay:'3.2s', letter:'N'},
+    {l:'43%',sz:36, bg:'#457b9d', dur:'9.4s', delay:'0.6s', letter:'G'},
+    {l:'58%',sz:46, bg:'#9d4edd', dur:'5.8s', delay:'2.4s', letter:'O'},
+    {l:'72%',sz:33, bg:'#e63946', dur:'7.6s', delay:'4.1s', letter:'B'},
+    {l:'83%',sz:28, bg:'#ffd700', dur:'6.3s', delay:'1.1s', letter:'I', color:'#222'},
+    {l:'91%',sz:44, bg:'#80b918', dur:'8.9s', delay:'2.9s', letter:'N'},
+    {l:'20%',sz:38, bg:'#ff6b6b', dur:'10s',  delay:'0.3s', letter:'G'},
+    {l:'65%',sz:40, bg:'#4cc9f0', dur:'6.8s', delay:'3.7s', letter:'O'},
+  ];
+  defs.forEach(d => {
+    const b = document.createElement('div');
+    b.className = 'bball';
+    b.textContent = d.letter;
+    b.style.cssText = `left:${d.l};bottom:-60px;width:${d.sz}px;height:${d.sz}px;
+      font-size:${Math.round(d.sz*.42)}px;background:${d.bg};color:${d.color||'#fff'};
+      animation-duration:${d.dur};animation-delay:${d.delay}`;
+    container.appendChild(b);
+  });
+}
+
+// ════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   buildThemeGrid();
   loadSettings();
+  spawnBalls();
   setupSocket();
 });

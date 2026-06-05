@@ -179,6 +179,24 @@ function handleHost(socket) {
     io.emit('game-reset');
   });
 
+  socket.on('host-back-to-setup', () => {
+    gs.phase = 'setup'; gs.players = []; gs.vote = null;
+    gs.spinHistory = []; gs.currentSpin = null;
+    gs.takenNames = new Set(); gs.setupCount = 0; gs.setupDone = new Set();
+    Object.keys(playerSockets).forEach(k => delete playerSockets[k]);
+    toAllPlayers('game-reset', {}); // reset players only — host navigates back itself
+  });
+
+  socket.on('host-request-cards', () => {
+    hostSocket?.emit('cards-data', {
+      players: gs.players.map((p, i) => ({
+        name: p.name, idx: i, grid: p.grid, marked: p.marked, hasBingo: p.hasBingo,
+      })),
+      gridSize: gs.gridSize,
+      wikiMap: gs.wikiMap,
+    });
+  });
+
   socket.on('disconnect', () => { if (hostSocket === socket) hostSocket = null; });
 }
 
@@ -216,6 +234,21 @@ function handlePlayer(socket) {
 
     toHost('player-joined', { playerIdx, name: p.name });
     broadcastLobby();
+
+    // Resend active vote so a reconnecting player sees the modal
+    if (gs.phase === 'game' && gs.vote && !gs.vote.resolved) {
+      const vp = gs.vote.playerIdx;
+      socket.emit('vote-open', {
+        announcerIdx: vp, announcerName: gs.players[vp].name,
+        cellName: gs.vote.name, characteristic: gs.currentSpin,
+        wikiUrl: gs.wikiMap[gs.vote.name] || null,
+      });
+      const vals = Object.values(gs.vote.votes);
+      socket.emit('vote-update', {
+        voted: vals.filter(v=>v!==null).length, total: vals.length,
+        yes: vals.filter(v=>v===true).length, no: vals.filter(v=>v===false).length,
+      });
+    }
   });
 
   socket.on('player-card-done', ({ playerIdx, grid }) => {
@@ -240,7 +273,9 @@ function handlePlayer(socket) {
   });
 
   socket.on('player-announce', ({ playerIdx, row, col, name }) => {
-    if (socket.playerIdx !== playerIdx || gs.vote || !gs.currentSpin) return;
+    if (socket.playerIdx !== playerIdx) { socket.emit('announce-failed', 'not-claimed'); return; }
+    if (gs.vote) { socket.emit('announce-failed', 'vote-active'); return; }
+    if (!gs.currentSpin) { socket.emit('announce-failed', 'no-spin'); return; }
     gs.vote = {
       playerIdx, row, col, name,
       votes: Object.fromEntries(gs.players.map((_, i) => [i, null])),
@@ -278,12 +313,37 @@ function handlePlayer(socket) {
     if (vals.every(v => v !== null)) resolveVote();
   });
 
+  socket.on('player-cancel-vote', ({ playerIdx }) => {
+    if (!gs.vote || gs.vote.playerIdx !== playerIdx || gs.vote.resolved) return;
+    if (socket.playerIdx !== playerIdx) return;
+    gs.vote = null;
+    toAll('vote-cancelled', {});
+  });
+
   socket.on('disconnect', () => {
     const idx = socket.playerIdx;
     if (idx !== undefined && playerSockets[idx] === socket) {
       playerSockets[idx] = null;
       toHost('player-closed', { playerIdx: idx });
       broadcastLobby();
+
+      // Prevent vote stalemate when a player disconnects mid-vote
+      if (gs.vote && !gs.vote.resolved) {
+        if (gs.vote.playerIdx === idx) {
+          // Announcer disconnected — cancel the whole vote
+          gs.vote = null;
+          toAll('vote-cancelled', {});
+        } else if (gs.vote.votes[idx] === null) {
+          // Pending voter disconnected — drop their slot so others can resolve
+          delete gs.vote.votes[idx];
+          const vals = Object.values(gs.vote.votes);
+          toAll('vote-update', {
+            voted: vals.filter(v=>v!==null).length, total: vals.length,
+            yes: vals.filter(v=>v===true).length, no: vals.filter(v=>v===false).length,
+          });
+          if (!vals.length || vals.every(v=>v!==null)) resolveVote();
+        }
+      }
     }
   });
 }
@@ -299,6 +359,7 @@ function resolveVote() {
   if (pass) {
     gs.players[playerIdx].marked[row][col] = true;
     toPlayer(playerIdx, 'mark-cell', { row, col });
+    gs.currentSpin = null; // consumed — prevents re-announcing same characteristic
     checkBingo(playerIdx);
   }
   toAll('vote-result', { pass, yes, no, playerIdx, row, col });
@@ -333,3 +394,5 @@ function start(port = PORT) {
 }
 
 module.exports = { start, PORT, getLocalIP };
+
+if (require.main === module) start();

@@ -8,7 +8,8 @@
 :root{--bg:#0f0e17;--surface:#1a1a2e;--surface2:#1e1b4b;--border:#2a2a4e;
   --accent:#a786df;--accent2:#7c53c3;--gold:#ffd700;--red:#e63946;
   --green:#2d6a4f;--text:#fffffe;--muted:#888;--dim:#444;--card:#12111e;
-  --font:'Segoe UI',Tahoma,Geneva,sans-serif;--fs:14px}
+  --font:'Segoe UI',Tahoma,Geneva,sans-serif;--fs:14px;
+  --mark-char:"✕";--mark-bg:#e6394650;--mark-color:var(--red)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;-webkit-tap-highlight-color:transparent}
 body{font-family:var(--font);font-size:var(--fs);background:var(--bg);color:var(--text);
@@ -46,6 +47,11 @@ select option{background:var(--surface)}
 .theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
 .tswatch{width:100%;aspect-ratio:1;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:border-color .15s}
 .tswatch.active{border-color:var(--text)!important}
+.mark-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:2px}
+.mark-swatch{width:100%;aspect-ratio:1;border-radius:8px;background:var(--surface2);
+  border:2px solid var(--border);font-size:18px;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;transition:border-color .15s;padding:0}
+.mark-swatch.active{border-color:var(--accent)!important;background:var(--surface)}
 .font-row{display:flex;gap:6px;align-items:center}
 .font-row input[type=range]{flex:1;accent-color:var(--accent)}
 .lang-btn{background:var(--surface2);color:var(--text);padding:8px 14px;font-size:13px;
@@ -55,9 +61,15 @@ select option{background:var(--surface)}
 .reset-btn{background:var(--surface2);color:var(--muted);padding:9px;font-size:12px;
   border:1px solid var(--border);width:100%;border-radius:8px}
 .reset-btn:hover{color:var(--red)!important;border-color:var(--red)!important}
-.cell-img{width:100%;height:46%;object-fit:cover;object-position:top center;
-  border-radius:4px 4px 0 0;display:block;flex-shrink:0}
-.mc{flex-direction:column;gap:1px;padding:0;justify-content:flex-start;align-items:stretch}
+.cell-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center 15%;border-radius:8px;z-index:1;display:block}
+.cell-label{position:absolute;bottom:0;left:0;right:0;z-index:2;
+  padding:18px 4px 5px;font-weight:600;color:var(--text);
+  font-size:calc(var(--fs) - 3px);line-height:1.2;text-align:center;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.mc.has-img .cell-label{background:linear-gradient(transparent,rgba(0,0,0,.82));color:#fff}
+.mc:not(.has-img) .cell-label{position:static;padding:3px 4px;background:none;display:block;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 
 /* lobby */
 #ph-lobby{width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;gap:16px;padding:16px}
@@ -88,10 +100,31 @@ select option{background:var(--surface)}
 .names-panel h3{font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
 .names-list{display:flex;flex-direction:column;gap:3px;overflow-y:auto;max-height:calc(100vh - 220px)}
 .n-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;
-  padding:6px 10px;font-size:calc(var(--fs) - 2px);cursor:grab;user-select:none;transition:background .1s,border-color .1s}
+  padding:6px 10px;font-size:calc(var(--fs) - 2px);cursor:grab;user-select:none;transition:background .1s,border-color .1s;
+  display:flex;align-items:center;justify-content:space-between;gap:4px}
 .n-item:hover:not(.used){background:var(--surface2);border-color:var(--accent)}
 .n-item.used{opacity:.3;cursor:default}
 .n-item.dragging{opacity:.35}
+.n-item.selected{border-color:var(--gold)!important;background:var(--surface2);cursor:pointer}
+.n-item-wiki{background:none;color:var(--accent);font-size:11px;padding:0 2px;opacity:.55;flex-shrink:0;line-height:1}
+.n-item-wiki:hover{opacity:1}
+.n-item-thumb{width:30px;height:30px;object-fit:cover;object-position:center 10%;
+  border-radius:50%;flex-shrink:0;display:none;border:1px solid var(--border)}
+.setup-photos-on .n-item-thumb{display:block}
+.sel-ind{font-size:11px;color:var(--gold);text-align:center;background:var(--surface2);
+  border:1px solid var(--gold);border-radius:6px;padding:5px 10px;width:100%}
+.has-sel .bc:not(.free){cursor:pointer}
+.has-sel .bc:not(.free):not(.filled){border-color:var(--accent);border-style:solid}
+.has-sel .bc:not(.free).filled{border-color:var(--gold)}
+@media(max-width:600px){
+  #ph-setup{height:auto;min-height:calc(100vh - 16px)}
+  .setup-layout{grid-template-columns:1fr}
+  .names-panel{max-height:none}
+  .names-list{flex-direction:row;flex-wrap:wrap;max-height:130px;overflow-y:auto;gap:4px}
+  .n-item{padding:4px 8px;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+  .bc{width:calc((100vw - 32px)/var(--gsize,4))!important;
+      height:calc((100vw - 32px)/var(--gsize,4) * .72)!important}
+}
 .grid-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;overflow-x:auto}
 .bingo-grid{display:grid;gap:5px}
 .bc{background:var(--surface);border:2px dashed var(--border);border-radius:8px;
@@ -119,8 +152,17 @@ select option{background:var(--surface)}
 #ph-waiting p{color:var(--dim);font-size:calc(var(--fs) - 1px)}
 
 /* game */
-#ph-game{width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;
-  gap:11px;overflow-y:auto;padding-bottom:16px}
+#ph-game{width:100%;max-width:min(98vw,960px);display:flex;flex-direction:column;align-items:center;
+  gap:11px;overflow-y:auto;padding-bottom:16px;position:relative}
+#ph-game::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background:radial-gradient(ellipse at 50% 0%,#a786df0e 0%,transparent 55%),
+             radial-gradient(ellipse at 20% 100%,#ffd70008 0%,transparent 50%)}
+.spin-banner{transition:box-shadow .4s,border-color .4s}
+.spin-banner.spin-lit{box-shadow:0 0 24px #a786df55,0 0 48px #ffd70022;border-color:var(--gold)}
+.ann-btn{background:linear-gradient(135deg,#e63946,#c0392b)!important;
+  box-shadow:0 4px 18px #e6394650;transition:box-shadow .2s,transform .1s}
+.ann-btn:not(:disabled):hover{box-shadow:0 6px 24px #e6394670}
+.mini-grid{filter:drop-shadow(0 4px 16px rgba(0,0,0,.4))}
 .flash{position:fixed;inset:0;background:var(--accent);opacity:0;pointer-events:none;z-index:10}
 .flash.go{animation:flashAnim .7s ease-out forwards}
 @keyframes flashAnim{0%{opacity:.3}100%{opacity:0}}
@@ -133,20 +175,33 @@ select option{background:var(--surface)}
 .player-banner{display:flex;align-items:center;justify-content:space-between;width:100%;padding:2px 0}
 .player-banner .pname{font-size:.95rem;font-weight:700;color:var(--accent)}
 .mini-grid{display:grid;gap:4px}
-.mc{background:var(--card);border:1px solid var(--border);border-radius:6px;
+.mc{background:var(--card);border:1px solid var(--border);border-radius:8px;
   display:flex;align-items:center;justify-content:center;text-align:center;
-  font-size:calc(var(--fs) - 4px);padding:3px;line-height:1.25;position:relative;
-  width:min(85px,calc((min(100vw,520px) - 56px) / var(--gsize,4)));
-  height:calc(min(85px,calc((min(100vw,520px) - 56px) / var(--gsize,4))) * .68);
+  font-size:calc(var(--fs) - 3px);line-height:1.25;position:relative;
+  width:min(var(--cell-max,155px),calc((min(98vw,960px) - 56px) / var(--gsize,4)));
+  height:min(calc(min(var(--cell-max,155px),calc((min(98vw,960px) - 56px) / var(--gsize,4))) * 1.3),calc((100vh - 275px) / var(--gsize,4) - 4px));
   word-break:break-word;overflow:hidden}
 .mc.free-c{color:var(--accent);font-weight:700;background:var(--surface)}
-.mc.marked::after{content:'✕';position:absolute;inset:0;display:flex;align-items:center;
-  justify-content:center;font-size:min(28px,calc((min(100vw,520px)-56px)/var(--gsize,4)*.5));
-  font-weight:900;color:var(--red);background:#e6394620;border-radius:6px}
-.mc.free-c.marked::after{content:'★';color:var(--accent);background:#a786df15}
-.wiki-btn{position:absolute;bottom:1px;right:2px;background:none;color:var(--accent);
-  font-size:9px;padding:0;opacity:0;transition:opacity .15s;line-height:1}
+.mc.marked::after{content:var(--mark-char,"✕");position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;
+  font-size:min(calc(min(var(--cell-max,155px),(min(98vw,960px) - 56px) / var(--gsize,4)) * .62),calc((100vh - 275px) / var(--gsize,4) * .62));
+  font-weight:900;color:var(--mark-color,var(--red));background:var(--mark-bg,#e6394650);border-radius:8px;z-index:5}
+.mc.free-c.marked::after{content:'★';color:var(--accent);background:#a786df25}
+.wiki-btn{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.45);color:#fff;
+  font-size:9px;padding:1px 3px;border-radius:3px;opacity:0;transition:opacity .15s;
+  line-height:1;z-index:4}
+.mc:not(.has-img) .wiki-btn{background:none;color:var(--accent)}
 .mc:hover .wiki-btn{opacity:1}
+.mc.sel-ann{outline:2px solid var(--gold);outline-offset:1px;box-shadow:0 0 0 3px #ffd70030}
+.ann-preview{background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  padding:7px 12px;margin:6px 0;min-height:38px;display:flex;align-items:center;gap:10px}
+.ann-pre-hint{font-size:12px;color:var(--dim);flex:1;text-align:center}
+.ann-pre-content{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.ann-pre-img{width:38px;height:38px;border-radius:6px;object-fit:cover;object-position:center 15%;flex-shrink:0}
+.ann-pre-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.ann-pre-name{font-size:13px;font-weight:700;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ann-pre-wiki{font-size:11px;color:var(--accent);text-decoration:none;opacity:.8}
+.ann-pre-wiki:hover{opacity:1;text-decoration:underline}
 .ann-btn{background:var(--red);color:#fff;padding:11px 0;width:100%;font-size:calc(var(--fs) + 1px);border-radius:10px}
 .hist-small{font-size:10px;color:var(--dim);text-align:center}.hist-small span{margin:0 4px}
 
@@ -161,13 +216,18 @@ select option{background:var(--surface)}
 .cname{font-size:1.05rem;font-weight:700;color:var(--gold)}
 .cchar{font-size:11px;color:var(--accent);margin-top:2px}
 .cwiki{margin-top:4px;font-size:11px}.cwiki a{color:var(--accent)}
+.vote-img{width:72px;height:72px;border-radius:8px;object-fit:cover;object-position:center 15%;
+  display:block;margin:0 auto 8px;border:2px solid var(--border)}
 .nsl{display:flex;flex-direction:column;gap:5px;max-height:230px;overflow-y:auto;margin:9px 0}
 .nsl-item{background:var(--card);border:1px solid var(--border);border-radius:7px;
-  padding:9px 13px;cursor:pointer;font-size:calc(var(--fs) - 1px);
-  display:flex;align-items:center;justify-content:space-between;transition:border-color .1s,background .1s}
+  padding:7px 11px;cursor:pointer;font-size:calc(var(--fs) - 1px);
+  display:flex;align-items:center;gap:9px;transition:border-color .1s,background .1s}
 .nsl-item:hover{background:var(--surface2);border-color:var(--accent)}
 .nsl-item.sel{background:var(--surface2);border-color:var(--gold)}
-.nsl-wiki{background:none;color:var(--accent);font-size:11px;padding:0;opacity:.7}
+.nsl-thumb{width:40px;height:40px;border-radius:5px;object-fit:cover;object-position:center 15%;flex-shrink:0;background:var(--surface2)}
+.nsl-info{display:flex;flex:1;align-items:center;justify-content:space-between;min-width:0;gap:6px}
+.nsl-info span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nsl-wiki{background:none;color:var(--accent);font-size:11px;padding:0;opacity:.7;flex-shrink:0}
 .nsl-wiki:hover{opacity:1}
 .m-actions{display:flex;gap:8px;margin-top:9px}
 .btn-confirm{background:var(--gold);color:var(--bg);padding:9px 0;flex:1;font-size:12px}
@@ -216,11 +276,22 @@ select option{background:var(--surface)}
     <button id="lang-btn" class="lang-btn" onclick="toggleLang()">🇹🇭 ภาษาไทย</button>
   </div>
   <div class="drawer-section">
+    <label>Card Cell Size — <span id="cell-max-val">120px</span></label>
+    <div class="font-row"><span style="font-size:10px">▫</span>
+      <input type="range" min="60" max="160" value="120" id="cell-max-range" oninput="applyCellMax()"
+             style="accent-color:var(--accent);flex:1">
+      <span style="font-size:16px">▪</span></div>
+  </div>
+  <div class="drawer-section">
     <label data-i18n="label-photos">Show Celebrity Photos</label>
     <div class="photos-row">
       <input type="checkbox" id="chk-photos" checked onchange="setPhotos(this.checked)">
       <span style="font-size:11px;color:var(--muted)" data-i18n="photos-hint">Loads from Wikipedia</span>
     </div>
+  </div>
+  <div class="drawer-section">
+    <label>Mark Style</label>
+    <div class="mark-grid" id="mark-grid"></div>
   </div>
   <div class="drawer-section" style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
     <button class="reset-btn" onclick="resetSettings()" data-i18n="btn-reset">Reset to Default</button>
@@ -239,9 +310,16 @@ select option{background:var(--surface)}
 
 <!-- CARD SETUP -->
 <div id="ph-setup" class="hidden">
-  <div class="setup-hdr">
-    <h2 id="setup-title">Your Card</h2>
-    <p>Drag names onto your grid, then tap Done.</p>
+  <div class="setup-hdr" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">
+    <div>
+      <h2 id="setup-title">Your Card</h2>
+      <p id="setup-hint">Tap a name to select it, then tap a cell to place it. Or drag on desktop.</p>
+    </div>
+    <button id="btn-setup-photos" onclick="toggleSetupPhotos()"
+      style="background:var(--surface2);color:var(--accent);border:1px solid var(--border);
+             font-size:11px;padding:5px 10px;border-radius:8px;white-space:nowrap;flex-shrink:0">
+      📷 Show Photos
+    </button>
   </div>
   <div class="setup-layout">
     <div class="names-panel">
@@ -249,6 +327,7 @@ select option{background:var(--surface)}
       <div class="names-list" id="drag-names"></div>
     </div>
     <div class="grid-wrap">
+      <div id="sel-indicator" class="sel-ind hidden"></div>
       <div id="setup-grid" class="bingo-grid"></div>
       <p class="prog" id="prog">Fill <span id="cells-left">0</span> more cells</p>
       <div class="setup-actions">
@@ -279,7 +358,17 @@ select option{background:var(--surface)}
     <span style="font-size:10px;color:var(--dim)">Your card</span>
   </div>
   <div class="mini-grid" id="game-grid"></div>
-  <button class="ann-btn" id="ann-btn" onclick="openAnnounce()" disabled data-i18n="btn-announce">Announce Match!</button>
+  <div class="ann-preview" id="ann-preview">
+    <span class="ann-pre-hint" id="ann-pre-hint">Tap a cell on your card to select it</span>
+    <div class="ann-pre-content hidden" id="ann-pre-content">
+      <img class="ann-pre-img hidden" id="ann-pre-img" alt="">
+      <div class="ann-pre-info">
+        <span class="ann-pre-name" id="ann-pre-name"></span>
+        <a class="ann-pre-wiki hidden" id="ann-pre-wiki" target="_blank" rel="noopener">Wiki ↗</a>
+      </div>
+    </div>
+  </div>
+  <button class="ann-btn" id="ann-btn" onclick="doAnnounceBtn()" disabled>Announce Match!</button>
   <div class="hist-small" id="hist-small"></div>
 </div>
 
@@ -303,12 +392,15 @@ select option{background:var(--surface)}
   <div class="modal">
     <h3 data-i18n="vote-title">Cast Your Vote</h3>
     <div class="claim-box">
+      <img class="vote-img hidden" id="v-img" alt="">
       <div class="cname" id="v-name"></div>
       <div class="cchar" id="v-char"></div>
       <div class="cwiki" id="v-wiki"></div>
     </div>
     <div class="vote-list" id="vote-list"></div>
     <div class="vote-res hidden" id="vote-res"></div>
+    <button class="btn-cancel hidden" id="btn-cancel-vote" onclick="requestCancelVote()"
+      style="width:100%;margin-top:6px;background:#6b2737;color:#fff;padding:9px">← Cancel My Announcement</button>
     <button class="btn-close-vote hidden" id="btn-close-vote" onclick="closeVote()">Continue</button>
   </div>
 </div>

@@ -27,8 +27,30 @@ function setLang(lang, save=true) {
   });
   const btn = document.getElementById('lang-btn');
   if (btn) btn.textContent = lang === 'en' ? '🇹🇭 ภาษาไทย' : '🇬🇧 English';
+  // update spin word display if active
+  const spinEl = document.getElementById('spin-word');
+  if (spinEl && P.currentSpin) spinEl.textContent = wwTranslate(P.currentSpin);
 }
 function toggleLang() { setLang(currentLang === 'en' ? 'th' : 'en'); }
+const wwTranslate = w => (currentLang === 'th' && window.WW_TH?.[w]) || w;
+
+// ── mark style ─────────────────────────────────────────
+const MARK_STYLES = {
+  cross: { char:'✕',  bg:'#e6394650', color:'var(--red)',  label:'✕' },
+  coin:  { char:'🪙', bg:'#ffd70030', color:'var(--gold)', label:'🪙' },
+  fire:  { char:'🔥', bg:'#ff450030', color:'#ff6600',     label:'🔥' },
+  star:  { char:'⭐', bg:'#ffd70030', color:'var(--gold)', label:'⭐' },
+  skull: { char:'💀', bg:'#ffffff18', color:'#ccc',        label:'💀' },
+  crown: { char:'👑', bg:'#ffd70030', color:'var(--gold)', label:'👑' },
+};
+function setMarkStyle(id, save=true) {
+  const s = MARK_STYLES[id] || MARK_STYLES.cross;
+  document.documentElement.style.setProperty('--mark-char', `"${s.char}"`);
+  document.documentElement.style.setProperty('--mark-bg', s.bg);
+  document.documentElement.style.setProperty('--mark-color', s.color);
+  if (save) localStorage.setItem('cb-mark-style', id);
+  document.querySelectorAll('.mark-swatch').forEach(el => el.classList.toggle('active', el.dataset.style === id));
+}
 
 // ── photos setting ─────────────────────────────────────
 let showPhotos = true;
@@ -40,19 +62,32 @@ function setPhotos(val, save=true) {
   if (P.phase === 'game') renderGameGrid(); // re-render to show/hide images
 }
 
+function applyCellMax(save=true) {
+  const val = parseInt(document.getElementById('cell-max-range').value);
+  document.documentElement.style.setProperty('--cell-max', val + 'px');
+  document.getElementById('cell-max-val').textContent = val + 'px';
+  if (save) localStorage.setItem('cb-cell-max', val);
+}
+
 function resetSettings() {
   localStorage.removeItem('cb-theme');
   localStorage.removeItem('cb-font-family');
   localStorage.removeItem('cb-font-size');
   localStorage.removeItem('cb-lang');
   localStorage.removeItem('cb-photos');
+  localStorage.removeItem('cb-cell-max');
+  localStorage.removeItem('cb-mark-style');
   applyTheme('dark-purple');
   applyFontDirect('Segoe UI', 14);
   setLang('en');
   setPhotos(true);
+  setMarkStyle('cross', false);
   document.getElementById('font-family-sel').value = 'Segoe UI';
   document.getElementById('font-size-range').value = '14';
   document.getElementById('fs-val').textContent = '14px';
+  document.getElementById('cell-max-range').value = '120';
+  document.getElementById('cell-max-val').textContent = '155px';
+  document.documentElement.style.setProperty('--cell-max', '155px');
 }
 
 // ── Wiki image cache ───────────────────────────────────
@@ -90,6 +125,11 @@ function loadSettings() {
   document.getElementById('fs-val').textContent = sz + 'px';
   setLang(localStorage.getItem('cb-lang') || 'en', false);
   setPhotos(localStorage.getItem('cb-photos') !== '0', false);
+  setMarkStyle(localStorage.getItem('cb-mark-style') || 'cross', false);
+  const cm = parseInt(localStorage.getItem('cb-cell-max') || '155');
+  document.documentElement.style.setProperty('--cell-max', cm + 'px');
+  document.getElementById('cell-max-range').value = cm;
+  document.getElementById('cell-max-val').textContent = cm + 'px';
 }
 function applyTheme(name, save=true) {
   const t = THEMES[name]; if (!t) return;
@@ -124,6 +164,15 @@ function buildThemeGrid() {
     sw.onclick = () => applyTheme(id); g.appendChild(sw);
   });
 }
+function buildMarkGrid() {
+  const g = document.getElementById('mark-grid'); if (!g) return;
+  Object.entries(MARK_STYLES).forEach(([id, s]) => {
+    const btn = document.createElement('button');
+    btn.className = 'mark-swatch'; btn.title = id; btn.dataset.style = id;
+    btn.textContent = s.char; btn.onclick = () => setMarkStyle(id);
+    g.appendChild(btn);
+  });
+}
 
 // ════════════════════════════════════════════════════════
 // STATE
@@ -137,6 +186,7 @@ const P = {
   currentAnnouncerIdx:-1,
 };
 let dragName = null;
+let selectedName = null;
 let socket;
 
 // ════════════════════════════════════════════════════════
@@ -202,6 +252,17 @@ function setupSocket() {
 
   socket.on('connect', () => {
     dbg(`✓ Connected (${socket.id}) — waiting for lobby…`, '#52b788');
+    // Auto-reclaim slot on reconnect so the server knows who this socket is
+    if (P.playerIdx >= 0 && P.phase !== 'lobby') {
+      dbg('↺ Reconnected — reclaiming slot…', '#ffd700');
+      socket.emit('player-claim', { playerIdx: P.playerIdx });
+    }
+  });
+
+  socket.on('announce-failed', (reason) => {
+    const msgs = { 'no-spin':'Wait for the host to spin first', 'vote-active':'A vote is already in progress', 'not-claimed':'Reconnecting…' };
+    dbg(`⚠ Announce blocked: ${msgs[reason]||reason}`, '#ffd700');
+    if (reason === 'not-claimed' && P.playerIdx >= 0) socket.emit('player-claim', { playerIdx: P.playerIdx });
   });
 
   socket.on('connect_error', (err) => {
@@ -284,9 +345,12 @@ function setupSocket() {
 
   socket.on('spin-reveal', ({ word, history }) => {
     P.currentSpin = word;
+    clearAnnounceSelection();
     const el = document.getElementById('spin-word');
-    el.textContent = word; el.classList.remove('revealed');
+    el.textContent = wwTranslate(word); el.classList.remove('revealed');
     void el.offsetWidth; el.classList.add('revealed');
+    const banner = document.querySelector('.spin-banner');
+    if (banner) { banner.classList.remove('spin-lit'); void banner.offsetWidth; banner.classList.add('spin-lit'); }
     const flash = document.getElementById('flash');
     flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
     playRevealSound();
@@ -298,12 +362,21 @@ function setupSocket() {
 
   socket.on('vote-open', ({ announcerIdx, announcerName, cellName, characteristic, wikiUrl }) => {
     P.voteResolved = false; P.currentAnnouncerIdx = announcerIdx;
+    clearAnnounceSelection();
     document.getElementById('v-name').textContent = cellName;
     document.getElementById('v-char').textContent = t('tpl-matches', characteristic);
     const we = document.getElementById('v-wiki');
     we.innerHTML = wikiUrl ? `<a href="${wikiUrl}" target="_blank" rel="noopener">${t('wiki-link')}</a>` : '';
+    const vImg = document.getElementById('v-img');
+    if (vImg) { vImg.src = ''; vImg.classList.add('hidden'); fetchThumb(cellName, wikiUrl).then(src => { if (src) { vImg.src = src; vImg.classList.remove('hidden'); } }); }
     document.getElementById('vote-res').className = 'vote-res hidden';
     document.getElementById('btn-close-vote').classList.add('hidden');
+    // Show cancel button only for the announcer, before vote resolves
+    const cancelBtn = document.getElementById('btn-cancel-vote');
+    if (cancelBtn) cancelBtn.classList.toggle('hidden', announcerIdx !== P.playerIdx);
+    // Disable announce button while vote is in progress
+    const annBtn = document.getElementById('ann-btn');
+    if (annBtn) annBtn.disabled = true;
     renderVoteList();
     document.getElementById('vote-overlay').classList.remove('hidden');
   });
@@ -312,12 +385,30 @@ function setupSocket() {
 
   socket.on('vote-result', ({ pass, yes, no }) => {
     P.voteResolved = true;
+    clearAnnounceSelection();
     const res = document.getElementById('vote-res');
     res.className = `vote-res ${pass?'pass':'fail'}`;
     res.textContent = pass ? t('tpl-approved', yes, no) : t('tpl-rejected', yes, no);
     res.classList.remove('hidden');
+    document.getElementById('btn-cancel-vote').classList.add('hidden');
     document.getElementById('btn-close-vote').classList.remove('hidden');
     document.querySelectorAll('.bv-yes,.bv-no').forEach(b => b.disabled = true);
+    const annBtn = document.getElementById('ann-btn');
+    if (pass) {
+      P.currentSpin = null; // characteristic consumed, wait for next spin
+      if (annBtn) annBtn.disabled = true;
+    } else {
+      if (annBtn && P.currentSpin) annBtn.disabled = false;
+    }
+  });
+
+  socket.on('vote-cancelled', () => {
+    document.getElementById('vote-overlay').classList.add('hidden');
+    P.voteResolved = false;
+    clearAnnounceSelection();
+    document.getElementById('btn-cancel-vote').classList.add('hidden');
+    const annBtn = document.getElementById('ann-btn');
+    if (annBtn && P.currentSpin) annBtn.disabled = false;
   });
 
   socket.on('mark-cell', ({ row, col }) => {
@@ -339,18 +430,79 @@ function usedNames() {
   P.grid.flat().forEach(n => { if (n && n !== 'FREE') s.add(n); });
   return s;
 }
+let setupPhotosOn = false;
+function toggleSetupPhotos() {
+  setupPhotosOn = !setupPhotosOn;
+  const btn = document.getElementById('btn-setup-photos');
+  const list = document.getElementById('drag-names');
+  if (btn) btn.textContent = setupPhotosOn ? '📷 Hide Photos' : '📷 Show Photos';
+  if (list) list.classList.toggle('setup-photos-on', setupPhotosOn);
+  if (setupPhotosOn) {
+    // Fetch any missing images
+    P.names.forEach(n => { if (!(n in imgCache)) fetchThumb(n, P.wikiMap[n]).then(() => renderDragNames()); });
+  }
+  renderDragNames();
+}
+
+function setSelectionIndicator(name) {
+  const ind = document.getElementById('sel-indicator');
+  if (name) {
+    ind.textContent = `Placing: ${name} — tap a cell`;
+    ind.classList.remove('hidden');
+  } else {
+    ind.classList.add('hidden');
+  }
+  document.getElementById('setup-grid')?.classList.toggle('has-sel', !!name);
+}
+
 function renderDragNames() {
   const list = document.getElementById('drag-names'); list.innerHTML = '';
   const used = usedNames();
   P.names.forEach(name => {
     const unavail = used.has(name) || (!P.namesRepeat && P.takenNames.has(name));
     const item = document.createElement('div');
-    item.className = 'n-item' + (unavail ? ' used' : '');
-    item.textContent = name;
+    item.className = 'n-item' + (unavail ? ' used' : '') + (selectedName === name ? ' selected' : '');
+
+    // Thumbnail (visible only when setup photos on)
+    const thumb = document.createElement('img');
+    thumb.className = 'n-item-thumb'; thumb.alt = name;
+    if (imgCache[name]) { thumb.src = imgCache[name]; }
+    else { thumb.style.display = 'none'; }
+    item.appendChild(thumb);
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = name;
+    nameSpan.style.flex = '1';
+    item.appendChild(nameSpan);
+
+    if (P.wikiMap[name]) {
+      const wb = document.createElement('button');
+      wb.className = 'n-item-wiki'; wb.textContent = '🔗'; wb.title = 'Wikipedia';
+      wb.onclick = e => { e.stopPropagation(); window.open(P.wikiMap[name], '_blank', 'noopener'); };
+      item.appendChild(wb);
+    }
+
     if (!unavail) {
       item.draggable = true;
-      item.addEventListener('dragstart', e => { dragName=name; item.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
-      item.addEventListener('dragend', () => item.classList.remove('dragging'));
+      item.addEventListener('dragstart', e => {
+        dragName = name;
+        // Don't call renderDragNames() here — it destroys the DOM element mid-drag
+        // Just visually clear any selection state directly
+        selectedName = null; setSelectionIndicator(null);
+        document.querySelectorAll('.n-item.selected').forEach(el => el.classList.remove('selected'));
+        item.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move';
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        dragName = null;
+        renderDragNames(); // safe to re-render after drag is fully done
+      });
+      item.addEventListener('click', e => {
+        if (e.defaultPrevented) return; // ignore if drag just ended
+        selectedName = selectedName === name ? null : name;
+        setSelectionIndicator(selectedName);
+        renderDragNames();
+      });
     }
     list.appendChild(item);
   });
@@ -373,6 +525,15 @@ function renderSetupGrid() {
       cell.addEventListener('dragover', e => { e.preventDefault(); cell.classList.add('hover-over'); });
       cell.addEventListener('dragleave', () => cell.classList.remove('hover-over'));
       cell.addEventListener('drop', e => { e.preventDefault(); cell.classList.remove('hover-over'); if(dragName) dropCell(r,c,dragName); });
+      cell.addEventListener('click', () => {
+        if (!selectedName) return;
+        const oldName = P.grid[r][c];
+        P.grid[r][c] = null; // temporarily clear so usedNames() doesn't count it
+        if (usedNames().has(selectedName)) { P.grid[r][c] = oldName; return; }
+        P.grid[r][c] = selectedName;
+        selectedName = null; setSelectionIndicator(null);
+        renderSetupGrid(); renderDragNames(); updateProg();
+      });
     }
     grid.appendChild(cell);
   }
@@ -392,22 +553,24 @@ function shuffle(arr) {
 
 function autoFill() {
   const mid = Math.floor(P.gridSize / 2);
-  const used = usedNames();
-  const available = shuffle(P.names.filter(n =>
-    !used.has(n) && (P.namesRepeat || !P.takenNames.has(n))
-  ));
-  let idx = 0;
-  for (let r = 0; r < P.gridSize; r++) {
+  // Always clear first so re-clicking gives a fully new random card
+  for (let r = 0; r < P.gridSize; r++)
     for (let c = 0; c < P.gridSize; c++) {
       const isFree = P.freeCenter && P.gridSize % 2 === 1 && r === mid && c === mid;
-      if (isFree || P.grid[r][c]) continue;
-      if (idx < available.length) P.grid[r][c] = available[idx++];
+      if (!isFree) P.grid[r][c] = null;
     }
-  }
+  const available = shuffle(P.names.filter(n => P.namesRepeat || !P.takenNames.has(n)));
+  let idx = 0;
+  for (let r = 0; r < P.gridSize; r++)
+    for (let c = 0; c < P.gridSize; c++) {
+      const isFree = P.freeCenter && P.gridSize % 2 === 1 && r === mid && c === mid;
+      if (!isFree && idx < available.length) P.grid[r][c] = available[idx++];
+    }
   renderSetupGrid(); renderDragNames(); updateProg();
 }
 
 function clearCard() {
+  selectedName = null; setSelectionIndicator(null);
   const mid=Math.floor(P.gridSize/2);
   for(let r=0;r<P.gridSize;r++) for(let c=0;c<P.gridSize;c++){
     if(P.freeCenter&&P.gridSize%2===1&&r===mid&&c===mid) continue;
@@ -447,59 +610,126 @@ function renderGameGrid() {
   for(let r=0;r<P.gridSize;r++) for(let c=0;c<P.gridSize;c++){
     const isFree=P.freeCenter&&P.gridSize%2===1&&r===mid&&c===mid;
     const name=P.grid[r][c];
+    const hasImg=!isFree&&name&&showPhotos&&imgCache[name];
     const cell=document.createElement('div');
-    cell.className='mc'+(isFree?' free-c':'')+(P.marked[r][c]?' marked':'');
+    cell.className='mc'+(isFree?' free-c':'')+(P.marked[r][c]?' marked':'')+(hasImg?' has-img':'');
 
-    // Celebrity photo (if available and enabled)
-    if(!isFree && name && showPhotos && imgCache[name]) {
-      const img=document.createElement('img');
-      img.className='cell-img'; img.src=imgCache[name]; img.alt=name;
-      img.onerror=()=>img.remove();
-      cell.appendChild(img);
-    }
-
-    const span=document.createElement('span');
-    span.textContent=isFree?'FREE':(name||'');
-    span.style.cssText='padding:2px 3px;text-align:center;font-size:calc(var(--fs) - 4px);line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical';
-    cell.appendChild(span);
-
-    if(!isFree&&name&&P.wikiMap[name]){
-      const wb=document.createElement('button'); wb.className='wiki-btn'; wb.textContent='🔗'; wb.title='Wikipedia';
-      wb.onclick=e=>{e.stopPropagation();window.open(P.wikiMap[name],'_blank','noopener');};
-      cell.appendChild(wb);
+    if(isFree){
+      const span=document.createElement('span');
+      span.textContent='FREE';
+      span.style.cssText='font-weight:700;font-size:11px;color:var(--accent)';
+      cell.appendChild(span);
+    } else {
+      if(hasImg){
+        const img=document.createElement('img');
+        img.className='cell-img'; img.src=imgCache[name]; img.alt=name;
+        img.onerror=()=>{cell.classList.remove('has-img');img.remove();};
+        cell.appendChild(img);
+      }
+      const label=document.createElement('div');
+      label.className='cell-label';
+      label.textContent=name||'';
+      cell.appendChild(label);
+      if(P.wikiMap[name]){
+        const wb=document.createElement('button'); wb.className='wiki-btn'; wb.textContent='🔗'; wb.title='Wikipedia';
+        wb.onclick=e=>{e.stopPropagation();window.open(P.wikiMap[name],'_blank','noopener');};
+        cell.appendChild(wb);
+      }
+      if(!P.marked[r][c]){
+        cell.style.cursor='pointer';
+        cell.addEventListener('click',()=>selectCellForAnnounce(cell,r,c,name));
+      }
     }
     grid.appendChild(cell);
   }
 }
 
 // ════════════════════════════════════════════════════════
-// ANNOUNCE
+// ANNOUNCE — hybrid tap-to-select on card
 // ════════════════════════════════════════════════════════
+function clearAnnounceSelection() {
+  P.annCell = null;
+  document.querySelectorAll('.mc.sel-ann').forEach(el => el.classList.remove('sel-ann'));
+  const hint = document.getElementById('ann-pre-hint');
+  const content = document.getElementById('ann-pre-content');
+  if (hint) hint.classList.remove('hidden');
+  if (content) content.classList.add('hidden');
+}
+
+function selectCellForAnnounce(cellEl, r, c, name) {
+  if (!P.currentSpin) return;
+  document.querySelectorAll('.mc.sel-ann').forEach(el => el.classList.remove('sel-ann'));
+  cellEl.classList.add('sel-ann');
+  P.annCell = { row: r, col: c, name };
+  const hint = document.getElementById('ann-pre-hint');
+  const content = document.getElementById('ann-pre-content');
+  const nameEl = document.getElementById('ann-pre-name');
+  const imgEl = document.getElementById('ann-pre-img');
+  const wikiEl = document.getElementById('ann-pre-wiki');
+  if (hint) hint.classList.add('hidden');
+  if (content) content.classList.remove('hidden');
+  if (nameEl) nameEl.textContent = name;
+  if (imgEl) { imgEl.src = ''; imgEl.classList.add('hidden'); }
+  if (wikiEl) {
+    if (P.wikiMap[name]) { wikiEl.href = P.wikiMap[name]; wikiEl.classList.remove('hidden'); }
+    else wikiEl.classList.add('hidden');
+  }
+  if (imgEl) fetchThumb(name, P.wikiMap[name]).then(src => {
+    if (src) { imgEl.src = src; imgEl.classList.remove('hidden'); }
+  });
+}
+
+function doAnnounceBtn() {
+  if (!P.currentSpin) return;
+  if (!P.annCell) {
+    const hint = document.getElementById('ann-pre-hint');
+    if (hint) { hint.style.color = 'var(--gold)'; hint.textContent = 'Tap a cell first!'; setTimeout(() => { hint.style.color = ''; hint.textContent = 'Tap a cell on your card to select it'; }, 1800); }
+    return;
+  }
+  socket.emit('player-announce', { playerIdx: P.playerIdx, row: P.annCell.row, col: P.annCell.col, name: P.annCell.name });
+  clearAnnounceSelection();
+}
+
 function openAnnounce() {
   if(!P.currentSpin) return;
   P.annCell=null; document.getElementById('ann-char').textContent=`"${P.currentSpin}"`;
   document.getElementById('btn-confirm-ann').disabled=true;
   const list=document.getElementById('ann-list'); list.innerHTML='';
   const mid=Math.floor(P.gridSize/2);
+  const items=[];
   for(let r=0;r<P.gridSize;r++) for(let c=0;c<P.gridSize;c++){
     const isFree=P.freeCenter&&P.gridSize%2===1&&r===mid&&c===mid;
     if(isFree||P.marked[r][c]) continue;
     const name=P.grid[r][c]; if(!name) continue;
     const item=document.createElement('div'); item.className='nsl-item';
-    const ns=document.createElement('span'); ns.textContent=name; item.appendChild(ns);
+    // thumbnail
+    const img=document.createElement('img'); img.className='nsl-thumb'; img.alt='';
+    img.src=''; img.style.display='none';
+    item.appendChild(img);
+    // info section
+    const info=document.createElement('div'); info.className='nsl-info';
+    const ns=document.createElement('span'); ns.textContent=name; info.appendChild(ns);
     if(P.wikiMap[name]){
       const wb=document.createElement('button'); wb.className='nsl-wiki'; wb.textContent=t('wiki-btn');
-      wb.onclick=e=>{e.stopPropagation();window.open(P.wikiMap[name],'_blank','noopener');}; item.appendChild(wb);
+      wb.onclick=e=>{e.stopPropagation();window.open(P.wikiMap[name],'_blank','noopener');}; info.appendChild(wb);
     }
+    item.appendChild(info);
     item.onclick=()=>{
       document.querySelectorAll('.nsl-item').forEach(i=>i.classList.remove('sel'));
       item.classList.add('sel'); P.annCell={row:r,col:c,name};
       document.getElementById('btn-confirm-ann').disabled=false;
     };
     list.appendChild(item);
+    items.push({name, img, wikiUrl: P.wikiMap[name]||null});
   }
   if(!list.children.length) list.innerHTML='<p style="color:var(--dim);font-size:12px;text-align:center;padding:10px">All cells already marked!</p>';
   document.getElementById('ann-overlay').classList.remove('hidden');
+  // load thumbnails async
+  items.forEach(({name,img,wikiUrl})=>{
+    fetchThumb(name,wikiUrl).then(src=>{
+      if(src){ img.src=src; img.style.display='block'; }
+    });
+  });
 }
 function closeAnnounce() { document.getElementById('ann-overlay').classList.add('hidden'); P.annCell=null; }
 function confirmAnnounce() {
@@ -515,30 +745,41 @@ function confirmAnnounce() {
 function renderVoteList() {
   const list=document.getElementById('vote-list'); list.innerHTML='';
   P.playerNames.forEach((name,i)=>{
-    const row=document.createElement('div'); row.className='vi';
+    const row=document.createElement('div'); row.className='vi'; row.id=`vi-row-${i}`;
     if(i===P.currentAnnouncerIdx){
+      // Announcer: auto-yes, no buttons
       row.innerHTML=`<span class="vn">${name} <span style="font-size:10px;color:var(--muted)">${t('announcer-lbl')}</span></span>
         <span style="font-size:11px;font-weight:700;color:#52b788">${t('auto-yes')}</span>`;
-    } else {
+    } else if(i===P.playerIdx){
+      // My row: show my vote buttons
       row.innerHTML=`<span class="vn">${name}</span>
         <div class="vb">
-          <button class="bv-yes" onclick="castVote(${i},true)">${t('vote-yes')}</button>
-          <button class="bv-no"  onclick="castVote(${i},false)">${t('vote-no')}</button>
+          <button class="bv-yes" id="my-vote-yes" onclick="castVote(${i},true)">${t('vote-yes')}</button>
+          <button class="bv-no"  id="my-vote-no"  onclick="castVote(${i},false)">${t('vote-no')}</button>
         </div>`;
+    } else {
+      // Other players: show waiting status only
+      row.innerHTML=`<span class="vn">${name}</span>
+        <span id="vi-status-${i}" style="font-size:11px;color:var(--dim)">…</span>`;
     }
     list.appendChild(row);
   });
 }
 function castVote(voterIdx,value) {
   if(P.voteResolved) return;
-  const rows=document.querySelectorAll('.vi');
-  if(rows[voterIdx]){
-    rows[voterIdx].querySelectorAll('button').forEach(b=>b.disabled=true);
-    rows[voterIdx].querySelector(value?'.bv-yes':'.bv-no').className=value?'bv-yes voted':'bv-no voted';
-  }
+  const yBtn=document.getElementById('my-vote-yes');
+  const nBtn=document.getElementById('my-vote-no');
+  if(yBtn) yBtn.disabled=true;
+  if(nBtn) nBtn.disabled=true;
+  if(yBtn&&value)  yBtn.className='bv-yes voted';
+  if(nBtn&&!value) nBtn.className='bv-no voted';
   socket.emit('player-vote',{voterIdx,value});
 }
 function closeVote() { document.getElementById('vote-overlay').classList.add('hidden'); }
+function requestCancelVote() {
+  if (!confirm('Cancel your announcement? The vote will close for all players.')) return;
+  socket.emit('player-cancel-vote', { playerIdx: P.playerIdx });
+}
 
 // ════════════════════════════════════════════════════════
 // SOUND
@@ -572,6 +813,7 @@ window.addEventListener('DOMContentLoaded', () => {
   dbg('⏳ DOM ready, initialising…');
   try {
     buildThemeGrid();
+    buildMarkGrid();
     loadSettings();
     dbg('⏳ Settings loaded, connecting…');
     setupSocket();
